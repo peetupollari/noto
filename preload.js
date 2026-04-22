@@ -15,6 +15,7 @@ contextBridge.exposeInMainWorld('api', {
   chooseSaveLocation: async () => ipcRenderer.invoke('choose-save-location'),
   getAppBehaviorSettings: async () => ipcRenderer.invoke('get-app-behavior-settings'),
   getAppReleaseInfo: async () => ipcRenderer.invoke('get-app-release-info'),
+  checkForAppUpdate: async () => ipcRenderer.invoke('check-for-app-update'),
   setAppBehaviorSettings: async (settings) => ipcRenderer.invoke('set-app-behavior-settings', settings),
   openImportFiles: async () => ipcRenderer.invoke('open-import-files'),
   // Presentation Mode

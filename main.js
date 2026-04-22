@@ -4,6 +4,7 @@ const fs = require('fs');
 const { randomUUID } = require('crypto');
 const { createClient } = require('@supabase/supabase-js');
 const { Menu, Tray, nativeImage } = require('electron');
+const { autoUpdater } = require('electron-updater');
 
 let mainWindow;
 let presentationWin = null; // Track the presentation window
@@ -21,17 +22,18 @@ const AUTH_SESSION_FILE = path.join(app.getPath('userData'), 'auth-session.json'
 const AUTH_PASSWORD_FILE = path.join(app.getPath('userData'), 'auth-password.json');
 const PROJECT_SUPABASE_CONFIG_FILE = path.join(__dirname, 'supabase.config.json');
 const PROJECT_CLOUD_STORAGE_CONFIG_FILE = path.join(__dirname, 'cloud-storage.config.json');
-const APP_PACKAGE_FILE = path.join(__dirname, 'package.json');
 const APP_RELEASE_CONFIG_FILE = path.join(__dirname, 'app-release.config.json');
 const DEFAULT_CLOUD_STORAGE_BUCKET = 'noto-cloud-notes';
 const DEFAULT_CLOUD_STORAGE_PREFIX = 'notes';
 const DEFAULT_GLOBAL_USER_QUOTA_KB = 1000;
 const CLOUD_MANIFEST_CACHE_MS = 15 * 1000;
-const WINDOWS_APP_USER_MODEL_ID = 'com.noto.app';
+const WINDOWS_APP_USER_MODEL_ID = 'com.peetupollari.noto';
 const JUMP_OPEN_NOTE_ARG_PREFIX = '--open-note=';
 const JUMP_OPEN_FOLDER_ARG_PREFIX = '--open-folder=';
 const JUMP_LIST_RECENT_LIMIT = 3;
 const SUPPORTED_EXTERNAL_NOTE_EXTENSIONS = new Set(['.md', '.markdown', '.txt']);
+const AUTO_UPDATE_STARTUP_DELAY_MS = 15 * 1000;
+const AUTO_UPDATE_REPEAT_INTERVAL_MS = 6 * 60 * 60 * 1000;
 
 let supabaseClient = null;
 let supabaseConfigError = '';
@@ -43,6 +45,23 @@ let jumpListRefreshTimer = null;
 let trayIcon = null;
 let isExplicitQuitRequested = false;
 let quitGuardRequestInFlight = false;
+let isInstallingAppUpdate = false;
+let autoUpdateCheckPromise = null;
+let autoUpdateStartupTimer = null;
+let autoUpdateIntervalHandle = null;
+let autoUpdateReadyDialogPromise = null;
+let autoUpdaterConfigured = false;
+
+const autoUpdateState = {
+  supported: false,
+  status: 'idle',
+  message: '',
+  availableVersion: '',
+  downloadedVersion: '',
+  progressPercent: 0,
+  lastCheckedAt: '',
+  error: ''
+};
 
 function readSettings() {
   try {
@@ -220,8 +239,19 @@ function resolveInsideBase(relPath = '') {
   return resolved;
 }
 
+function getWindowsRuntimeIconPath() {
+  return app.isPackaged
+    ? path.join(process.resourcesPath, 'notologo-ico.ico')
+    : path.join(__dirname, 'notologo-ico.ico');
+}
+
 function getAppIconPath() {
+  if (process.platform === 'win32') return getWindowsRuntimeIconPath();
   return path.join(__dirname, 'src', 'img', 'notologo.png');
+}
+
+function getWindowsShellIconPath() {
+  return app.isPackaged ? process.execPath : getWindowsRuntimeIconPath();
 }
 
 function decodeJumpArgValue(rawValue = '') {
@@ -407,16 +437,267 @@ function readJsonFileIfExists(filePath, fallback = {}) {
 }
 
 function readAppReleaseInfo() {
-  const packageData = readJsonFileIfExists(APP_PACKAGE_FILE, {});
   const configData = readJsonFileIfExists(APP_RELEASE_CONFIG_FILE, {});
-  const version = typeof packageData.version === 'string' && packageData.version.trim()
-    ? packageData.version.trim()
-    : '0.0.0';
+  let version = '0.0.0';
+  try {
+    version = typeof app.getVersion === 'function' && app.getVersion()
+      ? String(app.getVersion()).trim()
+      : version;
+  } catch (error) {}
+  const autoUpdateSnapshot = getAutoUpdateStatusSnapshot();
   return {
     version,
     showAlphaBadge: Boolean(configData.showAlphaBadge),
-    showBetaBadge: Boolean(configData.showBetaBadge)
+    showBetaBadge: Boolean(configData.showBetaBadge),
+    canCheckForUpdates: autoUpdateSnapshot.supported,
+    updateStatus: autoUpdateSnapshot.status,
+    updateMessage: autoUpdateSnapshot.message,
+    updateAvailableVersion: autoUpdateSnapshot.availableVersion,
+    updateDownloadedVersion: autoUpdateSnapshot.downloadedVersion,
+    updateCheckedAt: autoUpdateSnapshot.lastCheckedAt
   };
+}
+
+function canUseAutoUpdates() {
+  return process.platform === 'win32' && app.isPackaged;
+}
+
+function getAutoUpdateSupportMessage() {
+  if (process.platform !== 'win32') return 'Automatic updates are currently configured for the Windows installer.';
+  if (!app.isPackaged) return 'Install the packaged Windows build to enable automatic updates.';
+  return 'Automatic updates are enabled for this installed build.';
+}
+
+function setAutoUpdateState(partial = {}) {
+  autoUpdateState.supported = canUseAutoUpdates();
+  Object.assign(autoUpdateState, partial);
+  if (!autoUpdateState.message) {
+    autoUpdateState.message = getAutoUpdateSupportMessage();
+  }
+}
+
+function getAutoUpdateStatusSnapshot() {
+  return {
+    supported: canUseAutoUpdates(),
+    status: autoUpdateState.status,
+    message: autoUpdateState.message || getAutoUpdateSupportMessage(),
+    availableVersion: autoUpdateState.availableVersion || '',
+    downloadedVersion: autoUpdateState.downloadedVersion || '',
+    progressPercent: Number.isFinite(Number(autoUpdateState.progressPercent))
+      ? Math.max(0, Math.min(100, Number(autoUpdateState.progressPercent)))
+      : 0,
+    lastCheckedAt: autoUpdateState.lastCheckedAt || '',
+    error: autoUpdateState.error || ''
+  };
+}
+
+function applyWindowsTaskbarIdentity(win) {
+  if (process.platform !== 'win32' || !win || win.isDestroyed()) return;
+  try {
+    win.setAppDetails({
+      appId: WINDOWS_APP_USER_MODEL_ID,
+      appIconPath: getWindowsShellIconPath(),
+      appIconIndex: 0
+    });
+  } catch (error) {
+    console.error('Failed to apply Windows taskbar identity:', error);
+  }
+}
+
+function initializeAutoUpdaterState() {
+  setAutoUpdateState({
+    status: canUseAutoUpdates() ? 'idle' : 'unsupported',
+    message: getAutoUpdateSupportMessage(),
+    availableVersion: '',
+    downloadedVersion: '',
+    progressPercent: 0,
+    lastCheckedAt: '',
+    error: ''
+  });
+}
+
+function promptToInstallDownloadedUpdate(version = '') {
+  if (autoUpdateReadyDialogPromise) return autoUpdateReadyDialogPromise;
+  const detail = version
+    ? `Noto ${version} has been downloaded. Restart now to install it, or choose Later to install it the next time you quit the app.`
+    : 'A Noto update has been downloaded. Restart now to install it, or choose Later to install it the next time you quit the app.';
+  const parentWindow = mainWindow && !mainWindow.isDestroyed() ? mainWindow : null;
+  autoUpdateReadyDialogPromise = dialog.showMessageBox(parentWindow, {
+    type: 'info',
+    buttons: ['Restart now', 'Later'],
+    defaultId: 0,
+    cancelId: 1,
+    title: 'Update ready',
+    message: 'An update is ready to install.',
+    detail,
+    noLink: true
+  })
+    .then((result) => {
+      autoUpdateReadyDialogPromise = null;
+      if (result && result.response === 0) {
+        isInstallingAppUpdate = true;
+        isExplicitQuitRequested = true;
+        quitGuardRequestInFlight = false;
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          mainWindow.__allowGuardedClose = true;
+        }
+        autoUpdater.quitAndInstall();
+      }
+    })
+    .catch((error) => {
+      autoUpdateReadyDialogPromise = null;
+      console.error('Failed to show update dialog:', error);
+    });
+  return autoUpdateReadyDialogPromise;
+}
+
+function configureAutoUpdater() {
+  if (autoUpdaterConfigured) return;
+  autoUpdaterConfigured = true;
+  initializeAutoUpdaterState();
+  if (!canUseAutoUpdates()) return;
+
+  autoUpdater.autoDownload = true;
+  autoUpdater.autoInstallOnAppQuit = true;
+  autoUpdater.allowPrerelease = false;
+  autoUpdater.allowDowngrade = false;
+
+  autoUpdater.on('checking-for-update', () => {
+    setAutoUpdateState({
+      status: 'checking',
+      message: 'Checking GitHub Releases for updates...',
+      progressPercent: 0,
+      lastCheckedAt: new Date().toISOString(),
+      error: ''
+    });
+  });
+
+  autoUpdater.on('update-available', (info = {}) => {
+    const version = typeof info.version === 'string' ? info.version.trim() : '';
+    setAutoUpdateState({
+      status: 'downloading',
+      message: version ? `Downloading Noto ${version}...` : 'Downloading the latest Noto update...',
+      availableVersion: version,
+      downloadedVersion: '',
+      progressPercent: 0,
+      error: ''
+    });
+  });
+
+  autoUpdater.on('download-progress', (progress = {}) => {
+    const percent = Number.isFinite(Number(progress.percent)) ? Number(progress.percent) : 0;
+    const version = autoUpdateState.availableVersion || '';
+    setAutoUpdateState({
+      status: 'downloading',
+      message: version
+        ? `Downloading Noto ${version} (${Math.round(percent)}%).`
+        : `Downloading update (${Math.round(percent)}%).`,
+      progressPercent: percent
+    });
+  });
+
+  autoUpdater.on('update-not-available', () => {
+    setAutoUpdateState({
+      status: 'up-to-date',
+      message: 'You already have the latest published version.',
+      availableVersion: '',
+      downloadedVersion: '',
+      progressPercent: 0,
+      error: ''
+    });
+  });
+
+  autoUpdater.on('update-downloaded', (info = {}) => {
+    const version = typeof info.version === 'string' && info.version.trim()
+      ? info.version.trim()
+      : (typeof info.releaseName === 'string' ? info.releaseName.trim() : '');
+    setAutoUpdateState({
+      status: 'update-downloaded',
+      message: version ? `Noto ${version} is ready to install.` : 'A Noto update is ready to install.',
+      downloadedVersion: version,
+      progressPercent: 100,
+      error: ''
+    });
+    promptToInstallDownloadedUpdate(version).catch(() => {});
+  });
+
+  autoUpdater.on('before-quit-for-update', () => {
+    isInstallingAppUpdate = true;
+    isExplicitQuitRequested = true;
+    quitGuardRequestInFlight = false;
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.__allowGuardedClose = true;
+    }
+  });
+
+  autoUpdater.on('error', (error) => {
+    const message = error && error.message ? String(error.message) : 'Failed to check for updates.';
+    setAutoUpdateState({
+      status: 'error',
+      message,
+      progressPercent: 0,
+      error: message
+    });
+    console.error('Auto update error:', error);
+  });
+}
+
+function scheduleAutoUpdateChecks() {
+  if (!canUseAutoUpdates()) return;
+  if (autoUpdateStartupTimer) clearTimeout(autoUpdateStartupTimer);
+  if (autoUpdateIntervalHandle) clearInterval(autoUpdateIntervalHandle);
+  autoUpdateStartupTimer = setTimeout(() => {
+    autoUpdateStartupTimer = null;
+    checkForAppUpdates().catch(() => {});
+  }, AUTO_UPDATE_STARTUP_DELAY_MS);
+  autoUpdateIntervalHandle = setInterval(() => {
+    checkForAppUpdates().catch(() => {});
+  }, AUTO_UPDATE_REPEAT_INTERVAL_MS);
+}
+
+async function checkForAppUpdates() {
+  if (!autoUpdaterConfigured) configureAutoUpdater();
+  if (!canUseAutoUpdates()) {
+    initializeAutoUpdaterState();
+    return {
+      success: false,
+      skipped: true,
+      ...getAutoUpdateStatusSnapshot()
+    };
+  }
+  if (autoUpdateState.status === 'downloading' || autoUpdateState.status === 'update-downloaded') {
+    return {
+      success: true,
+      ...getAutoUpdateStatusSnapshot()
+    };
+  }
+  if (autoUpdateCheckPromise) return autoUpdateCheckPromise;
+
+  autoUpdateCheckPromise = autoUpdater.checkForUpdates()
+    .then(() => ({
+      success: true,
+      ...getAutoUpdateStatusSnapshot()
+    }))
+    .catch((error) => {
+      const message = error && error.message ? String(error.message) : 'Failed to check for updates.';
+      setAutoUpdateState({
+        status: 'error',
+        message,
+        error: message,
+        progressPercent: 0
+      });
+      console.error('Auto update check failed:', error);
+      return {
+        success: false,
+        error: message,
+        ...getAutoUpdateStatusSnapshot()
+      };
+    })
+    .finally(() => {
+      autoUpdateCheckPromise = null;
+    });
+
+  return autoUpdateCheckPromise;
 }
 
 function toSafePositiveInt(value, fallback) {
@@ -1877,6 +2158,7 @@ function createWindow() {
       devTools: false
     }
   });
+  applyWindowsTaskbarIdentity(mainWindow);
 
   mainWindow.loadFile(getStartupPagePath());
   mainWindow.webContents.on('did-finish-load', () => {
@@ -1885,12 +2167,13 @@ function createWindow() {
   mainWindow.on('closed', () => {
     quitGuardRequestInFlight = false;
     isExplicitQuitRequested = false;
+    isInstallingAppUpdate = false;
     mainWindow = null;
   });
   mainWindow.__allowGuardedClose = false;
   mainWindow.on('close', (event) => {
     if (!mainWindow || mainWindow.isDestroyed()) return;
-    if (mainWindow.__allowGuardedClose) {
+    if (mainWindow.__allowGuardedClose || isInstallingAppUpdate) {
       mainWindow.__allowGuardedClose = false;
       quitGuardRequestInFlight = false;
       return;
@@ -1944,10 +2227,12 @@ if (!gotSingleInstanceLock) {
     if (process.platform === 'win32') {
       app.setAppUserModelId(WINDOWS_APP_USER_MODEL_ID);
     }
+    configureAutoUpdater();
     syncStoredOpenOnSystemStartSetting();
     createWindow();
     createWindowsTrayIfNeeded();
     refreshWindowsShellUi({ immediate: true });
+    scheduleAutoUpdateChecks();
     const startupLaunchRequest = parseLaunchRequest(process.argv);
     if (startupLaunchRequest) dispatchLaunchRequest(startupLaunchRequest);
   });
@@ -3198,6 +3483,10 @@ ipcMain.handle('get-app-release-info', () => {
   };
 });
 
+ipcMain.handle('check-for-app-update', async () => {
+  return checkForAppUpdates();
+});
+
 ipcMain.handle('set-app-behavior-settings', async (_event, payload = {}) => {
   const updates = (payload && typeof payload === 'object' && !Array.isArray(payload)) ? payload : {};
   try {
@@ -3925,7 +4214,7 @@ function buildJumpListTask(entry) {
   if (!safePath) return null;
   const isDirectory = Boolean(entry.isDirectory);
   const argPrefix = isDirectory ? JUMP_OPEN_FOLDER_ARG_PREFIX : JUMP_OPEN_NOTE_ARG_PREFIX;
-  const iconPath = getAppIconPath();
+  const iconPath = getWindowsShellIconPath();
   return {
     type: 'task',
     title: String(entry.title || getJumpEntryDisplayTitle(safePath, isDirectory) || 'Open'),
@@ -4002,7 +4291,7 @@ function refreshWindowsJumpListNow() {
         description: 'Open the workspace',
         program: process.execPath,
         args: buildLaunchArgs(''),
-        iconPath: getAppIconPath(),
+        iconPath: getWindowsShellIconPath(),
         iconIndex: 0
       }]
     });
@@ -4013,7 +4302,7 @@ function refreshWindowsJumpListNow() {
 }
 
 function createWindowsTrayIconImage() {
-  const iconPath = getAppIconPath();
+  const iconPath = getWindowsRuntimeIconPath();
   const iconImage = nativeImage.createFromPath(iconPath);
   if (!iconImage || iconImage.isEmpty()) return iconPath;
   return iconImage.resize({ width: 16, height: 16 });

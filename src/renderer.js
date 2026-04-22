@@ -4515,7 +4515,10 @@
       releaseInfo: {
         version: '',
         showAlphaBadge: false,
-        showBetaBadge: false
+        showBetaBadge: false,
+        canCheckForUpdates: false,
+        updateStatus: '',
+        updateMessage: ''
       },
       themeMode: appThemeMode,
       appSizeMode: appSizeMode,
@@ -4761,7 +4764,10 @@
             settingsState.releaseInfo = {
               version: String(result.version || '').trim(),
               showAlphaBadge: Boolean(result.showAlphaBadge),
-              showBetaBadge: Boolean(result.showBetaBadge)
+              showBetaBadge: Boolean(result.showBetaBadge),
+              canCheckForUpdates: Boolean(result.canCheckForUpdates),
+              updateStatus: String(result.updateStatus || '').trim(),
+              updateMessage: String(result.updateMessage || '').trim()
             };
           }
         }
@@ -5232,6 +5238,60 @@
           : 'This setting is not available on this platform.'
       );
       shellContent.appendChild(section);
+
+      const updatesSection = buildSection('Updates');
+      appendRow(
+        updatesSection.rows,
+        'Current version',
+        buildValue(settingsState.releaseInfo.version || 'Unknown'),
+        'This is the installed app version.'
+      );
+      appendRow(
+        updatesSection.rows,
+        'Update status',
+        buildValue(settingsState.releaseInfo.updateMessage || 'Automatic updates are not available in this build.'),
+        settingsState.releaseInfo.canCheckForUpdates
+          ? 'Noto checks GitHub Releases automatically when installed from the Windows installer.'
+          : 'Install the packaged Windows app to enable GitHub release checks.'
+      );
+      const checkForUpdatesAction = document.createElement('button');
+      checkForUpdatesAction.type = 'button';
+      checkForUpdatesAction.className = 'btn-secondary';
+      setButtonTextWithIcon(checkForUpdatesAction, ICONS.REFRESH_CIRCLE, 'Check now');
+      checkForUpdatesAction.disabled = !settingsState.releaseInfo.canCheckForUpdates;
+      checkForUpdatesAction.onclick = async () => {
+        if (checkForUpdatesAction.disabled) return;
+        checkForUpdatesAction.disabled = true;
+        try {
+          if (!window.api || typeof window.api.checkForAppUpdate !== 'function') {
+            throw new Error('Update API unavailable.');
+          }
+          const result = await window.api.checkForAppUpdate();
+          await refreshAppReleaseInfo({ render: true });
+          const message = result && typeof result.message === 'string' && result.message.trim()
+            ? result.message.trim()
+            : (settingsState.releaseInfo.updateMessage || 'Update check finished.');
+          if (result && result.success) {
+            if (settingsState.releaseInfo.updateStatus === 'up-to-date') showToast(message, 'success');
+            else showToast(message, 'info');
+          } else {
+            showToast(message, 'warning');
+          }
+        } catch (error) {
+          showToast(error && error.message ? error.message : 'Failed to check for updates.', 'warning');
+        } finally {
+          checkForUpdatesAction.disabled = !settingsState.releaseInfo.canCheckForUpdates;
+        }
+      };
+      appendRow(
+        updatesSection.rows,
+        'Check for updates',
+        checkForUpdatesAction,
+        settingsState.releaseInfo.canCheckForUpdates
+          ? 'Run an on-demand update check against the published GitHub release feed.'
+          : 'This button becomes available in the installed Windows build.'
+      );
+      shellContent.appendChild(updatesSection.section);
 
       const storageSection = buildSection('Cloud Storage');
       const storageRefreshBtn = createRefreshIconButton('Refresh cloud storage usage', async () => {
