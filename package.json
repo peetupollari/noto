@@ -1,0 +1,42 @@
+{
+  "name": "noto",
+  "version": "0.0.0,5",
+  "description": "Markdown note-taking application, focused on simplicity and ease of use.",
+  "main": "main.js",
+  "homepage": "./",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron . --remote-debugging-port=9223",
+    "build:editor": "esbuild src/codemirror-obsidian.mjs --bundle --format=iife --target=chrome120 --outfile=src/codemirror-obsidian.bundle.js"
+  },
+  "keywords": [
+    "electron",
+    "desktop",
+    "app"
+  ],
+  "author": "Noto",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "latest",
+    "esbuild": "^0.27.3",
+    "supabase": "^2.76.15"
+  },
+  "dependencies": {
+    "@codemirror/autocomplete": "^6.20.0",
+    "@codemirror/commands": "^6.10.2",
+    "@codemirror/lang-markdown": "^6.5.0",
+    "@codemirror/language": "^6.12.1",
+    "@codemirror/language-data": "^6.5.2",
+    "@codemirror/search": "^6.6.0",
+    "@codemirror/state": "^6.5.4",
+    "@codemirror/view": "^6.39.15",
+    "@lezer/highlight": "^1.2.3",
+    "@lezer/markdown": "^1.6.3",
+    "@supabase/supabase-js": "^2.97.0",
+    "codemirror": "^6.0.2",
+    "electron-builder": "^26.8.1",
+    "electron-updater": "^6.8.3",
+    "markdown-it": "^14.1.1",
+    "markdown-it-task-lists": "^2.1.1"
+  }
+}
