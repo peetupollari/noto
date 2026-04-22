@@ -27,6 +27,31 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Create Supabase release config
+        shell: pwsh
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          SUPABASE_DELETE_ACCOUNT_URL: ${{ secrets.SUPABASE_DELETE_ACCOUNT_URL }}
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:SUPABASE_URL)) {
+            throw "Missing repository secret SUPABASE_URL."
+          }
+          if ([string]::IsNullOrWhiteSpace($env:SUPABASE_ANON_KEY)) {
+            throw "Missing repository secret SUPABASE_ANON_KEY."
+          }
+
+          $config = [ordered]@{
+            url = $env:SUPABASE_URL
+            anonKey = $env:SUPABASE_ANON_KEY
+          }
+
+          if (-not [string]::IsNullOrWhiteSpace($env:SUPABASE_DELETE_ACCOUNT_URL)) {
+            $config.deleteAccountUrl = $env:SUPABASE_DELETE_ACCOUNT_URL
+          }
+
+          $config | ConvertTo-Json | Set-Content -Path "supabase.config.json" -Encoding utf8
+
       - name: Build and publish Windows installer
         run: npm run release:win
         env:

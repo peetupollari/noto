@@ -66,6 +66,14 @@
       {
         "from": "notologo-ico.ico",
         "to": "notologo-ico.ico"
+      },
+      {
+        "from": "supabase.config.json",
+        "to": "supabase.config.json"
+      },
+      {
+        "from": "cloud-storage.config.json",
+        "to": "cloud-storage.config.json"
       }
     ],
     "publish": [

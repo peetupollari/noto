@@ -20,8 +20,6 @@ const TRASH_ITEMS_DIR_NAME = 'items';
 const TRASH_META_FILE_NAME = 'trash-meta.json';
 const AUTH_SESSION_FILE = path.join(app.getPath('userData'), 'auth-session.json');
 const AUTH_PASSWORD_FILE = path.join(app.getPath('userData'), 'auth-password.json');
-const PROJECT_SUPABASE_CONFIG_FILE = path.join(__dirname, 'supabase.config.json');
-const PROJECT_CLOUD_STORAGE_CONFIG_FILE = path.join(__dirname, 'cloud-storage.config.json');
 const APP_RELEASE_CONFIG_FILE = path.join(__dirname, 'app-release.config.json');
 const DEFAULT_CLOUD_STORAGE_BUCKET = 'noto-cloud-notes';
 const DEFAULT_CLOUD_STORAGE_PREFIX = 'notes';
@@ -436,6 +434,31 @@ function readJsonFileIfExists(filePath, fallback = {}) {
   }
 }
 
+function getPackagedConfigPath(fileName) {
+  if (!app.isPackaged) return '';
+  try {
+    return path.join(process.resourcesPath, fileName);
+  } catch (error) {
+    return '';
+  }
+}
+
+function readBundledJsonConfig(fileName, fallback = {}) {
+  const candidatePaths = [
+    getPackagedConfigPath(fileName),
+    path.join(__dirname, fileName)
+  ].filter(Boolean);
+
+  for (const candidatePath of candidatePaths) {
+    const parsed = readJsonFileIfExists(candidatePath, null);
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+      return parsed;
+    }
+  }
+
+  return fallback;
+}
+
 function readAppReleaseInfo() {
   const configData = readJsonFileIfExists(APP_RELEASE_CONFIG_FILE, {});
   let version = '0.0.0';
@@ -565,7 +588,7 @@ function configureAutoUpdater() {
   autoUpdater.on('checking-for-update', () => {
     setAutoUpdateState({
       status: 'checking',
-      message: 'Checking GitHub Releases for updates...',
+      message: 'Checking for updates...',
       progressPercent: 0,
       lastCheckedAt: new Date().toISOString(),
       error: ''
@@ -576,7 +599,7 @@ function configureAutoUpdater() {
     const version = typeof info.version === 'string' ? info.version.trim() : '';
     setAutoUpdateState({
       status: 'downloading',
-      message: version ? `Downloading Noto ${version}...` : 'Downloading the latest Noto update...',
+      message: version ? `Downloading update ${version}...` : 'Downloading the latest update...',
       availableVersion: version,
       downloadedVersion: '',
       progressPercent: 0,
@@ -590,7 +613,7 @@ function configureAutoUpdater() {
     setAutoUpdateState({
       status: 'downloading',
       message: version
-        ? `Downloading Noto ${version} (${Math.round(percent)}%).`
+        ? `Downloading update ${version} (${Math.round(percent)}%).`
         : `Downloading update (${Math.round(percent)}%).`,
       progressPercent: percent
     });
@@ -599,7 +622,7 @@ function configureAutoUpdater() {
   autoUpdater.on('update-not-available', () => {
     setAutoUpdateState({
       status: 'up-to-date',
-      message: 'You already have the latest published version.',
+      message: 'You already have the latest version.',
       availableVersion: '',
       downloadedVersion: '',
       progressPercent: 0,
@@ -762,7 +785,7 @@ function normalizeStoragePrefix(prefix) {
 }
 
 function resolveCloudStorageConfig() {
-  const fileConfig = readJsonFileIfExists(PROJECT_CLOUD_STORAGE_CONFIG_FILE, {});
+  const fileConfig = readBundledJsonConfig('cloud-storage.config.json', {});
   const bucketRaw = DEFAULT_CLOUD_STORAGE_BUCKET;
   const prefixRaw = DEFAULT_CLOUD_STORAGE_PREFIX;
   const quotaRaw =
@@ -1897,7 +1920,7 @@ async function resolveCloudVersionContext(client, session, noteId, storageConfig
 }
 
 function resolveSupabaseConfig() {
-  const fileConfig = readJsonFileIfExists(PROJECT_SUPABASE_CONFIG_FILE, {});
+  const fileConfig = readBundledJsonConfig('supabase.config.json', {});
   const url = String(process.env.SUPABASE_URL || fileConfig.url || '').trim();
   const anonKey = String(process.env.SUPABASE_ANON_KEY || fileConfig.anonKey || '').trim();
   const deleteAccountUrl = String(process.env.SUPABASE_DELETE_ACCOUNT_URL || fileConfig.deleteAccountUrl || '').trim();

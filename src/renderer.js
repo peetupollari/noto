@@ -5251,8 +5251,8 @@
         'Update status',
         buildValue(settingsState.releaseInfo.updateMessage || 'Automatic updates are not available in this build.'),
         settingsState.releaseInfo.canCheckForUpdates
-          ? 'Noto checks GitHub Releases automatically when installed from the Windows installer.'
-          : 'Install the packaged Windows app to enable GitHub release checks.'
+          ? 'Noto checks automatically for new releases when installed from the Windows installer.'
+          : 'Install the packaged Windows app to enable automatic update checks.'
       );
       const checkForUpdatesAction = document.createElement('button');
       checkForUpdatesAction.type = 'button';
@@ -5288,7 +5288,7 @@
         'Check for updates',
         checkForUpdatesAction,
         settingsState.releaseInfo.canCheckForUpdates
-          ? 'Run an on-demand update check against the published GitHub release feed.'
+          ? 'Run an on-demand update check.'
           : 'This button becomes available in the installed Windows build.'
       );
       shellContent.appendChild(updatesSection.section);
