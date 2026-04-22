@@ -55,7 +55,7 @@
   "build": {
     "appId": "com.noto_notes.noto",
     "productName": "Noto",
-    "artifactName": "${productName}-Setup-${version}-${arch}.${ext}",
+    "artifactName": "${productName}-Setup-${arch}.${ext}",
     "asar": true,
     "compression": "maximum",
     "electronUpdaterCompatibility": ">=2.16",
