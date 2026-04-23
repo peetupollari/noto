@@ -1,5 +1,8 @@
 {
   "url": "https://YOUR_PROJECT_REF.supabase.co",
   "anonKey": "YOUR_SUPABASE_ANON_KEY",
-  "deleteAccountUrl": "https://YOUR_PROJECT_REF.functions.supabase.co/delete-account"
+  "deleteAccountUrl": "https://YOUR_PROJECT_REF.functions.supabase.co/delete-account",
+  "stripePaymentMode": "auto",
+  "stripePaymentLinkTestUrl": "https://buy.stripe.com/test_example",
+  "stripePaymentLinkLiveUrl": ""
 }

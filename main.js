@@ -32,6 +32,9 @@ const JUMP_LIST_RECENT_LIMIT = 3;
 const SUPPORTED_EXTERNAL_NOTE_EXTENSIONS = new Set(['.md', '.markdown', '.txt']);
 const AUTO_UPDATE_STARTUP_DELAY_MS = 15 * 1000;
 const AUTO_UPDATE_REPEAT_INTERVAL_MS = 6 * 60 * 60 * 1000;
+const DEFAULT_STRIPE_TEST_PAYMENT_LINK_URL = 'https://buy.stripe.com/test_eVqfZa4673pK35H7rogw001';
+const STRIPE_PAYMENT_STATUS_FUNCTION_NAME = 'payment-status';
+const APP_RESTRICTED_PAGE_NAMES = new Set(['index.html', 'welcome.html', 'login.html', 'signup.html']);
 
 let supabaseClient = null;
 let supabaseConfigError = '';
@@ -87,6 +90,88 @@ const DEFAULT_APP_BEHAVIOR_SETTINGS = Object.freeze({
   closeAppOnWindowClose: false,
   openOnSystemStart: false
 });
+
+function normalizePaymentState(raw = {}) {
+  const source = (raw && typeof raw === 'object' && !Array.isArray(raw)) ? raw : {};
+  return {
+    paid: Boolean(source.paid),
+    verifiedAt: typeof source.verifiedAt === 'string' ? source.verifiedAt : '',
+    sessionId: typeof source.sessionId === 'string' ? source.sessionId : '',
+    paymentLinkId: typeof source.paymentLinkId === 'string' ? source.paymentLinkId : '',
+    customerEmail: typeof source.customerEmail === 'string' ? source.customerEmail : '',
+    mode: typeof source.mode === 'string' ? source.mode : '',
+    currency: typeof source.currency === 'string' ? source.currency : '',
+    amountTotal: Number.isFinite(Number(source.amountTotal)) ? Number(source.amountTotal) : null
+  };
+}
+
+function readPaymentState() {
+  const settings = readSettingsObject();
+  return normalizePaymentState(settings.payment);
+}
+
+function writePaymentState(updates = {}) {
+  const settings = readSettingsObject();
+  const nextState = normalizePaymentState({
+    ...normalizePaymentState(settings.payment),
+    ...updates
+  });
+  settings.payment = nextState;
+  return writeSettings(settings);
+}
+
+function buildPaymentDeviceId() {
+  return `noto_${randomUUID().toLowerCase()}`;
+}
+
+function ensurePaymentDeviceId() {
+  const settings = readSettingsObject();
+  const stored = typeof settings.paymentDeviceId === 'string' ? settings.paymentDeviceId.trim() : '';
+  if (/^[a-z0-9_-]{12,128}$/i.test(stored)) return stored;
+  const nextDeviceId = buildPaymentDeviceId();
+  settings.paymentDeviceId = nextDeviceId;
+  writeSettings(settings);
+  return nextDeviceId;
+}
+
+function markPaymentVerified(details = {}) {
+  return writePaymentState({
+    paid: true,
+    verifiedAt: typeof details.verifiedAt === 'string' && details.verifiedAt.trim()
+      ? details.verifiedAt.trim()
+      : new Date().toISOString(),
+    sessionId: typeof details.sessionId === 'string' ? details.sessionId.trim() : '',
+    paymentLinkId: typeof details.paymentLinkId === 'string' ? details.paymentLinkId.trim() : '',
+    customerEmail: typeof details.customerEmail === 'string' ? details.customerEmail.trim() : '',
+    mode: typeof details.mode === 'string' ? details.mode.trim() : '',
+    currency: typeof details.currency === 'string' ? details.currency.trim().toLowerCase() : '',
+    amountTotal: Number.isFinite(Number(details.amountTotal)) ? Number(details.amountTotal) : null
+  });
+}
+
+function isPaymentVerified() {
+  return readPaymentState().paid;
+}
+
+function getKnownPageName(pageRef = '') {
+  const normalizedRef = String(pageRef || '').trim().toLowerCase();
+  for (const pageName of ['payment.html', ...APP_RESTRICTED_PAGE_NAMES]) {
+    if (normalizedRef.includes(pageName)) return pageName;
+  }
+  return '';
+}
+
+function shouldGatePageBehindPayment(pageRef = '') {
+  const pageName = getKnownPageName(pageRef);
+  if (!pageName || pageName === 'payment.html') return false;
+  return !isPaymentVerified();
+}
+
+function deriveSupabaseFunctionsBaseUrl(projectUrl = '') {
+  const match = String(projectUrl || '').trim().match(/^https:\/\/([a-z0-9-]+)\.supabase\.co\/?$/i);
+  if (!match) return '';
+  return `https://${match[1]}.functions.supabase.co`;
+}
 
 function hasSeenWelcomeScreen() {
   const settings = readSettingsObject();
@@ -1927,6 +2012,188 @@ function resolveSupabaseConfig() {
   return { url, anonKey, deleteAccountUrl };
 }
 
+function resolvePaymentConfig() {
+  const fileConfig = readBundledJsonConfig('supabase.config.json', {});
+  const supabaseConfig = resolveSupabaseConfig();
+  const explicitLinkUrl = String(process.env.STRIPE_PAYMENT_LINK_URL || fileConfig.stripePaymentLinkUrl || '').trim();
+  const testLinkUrl = String(process.env.STRIPE_PAYMENT_LINK_TEST_URL || fileConfig.stripePaymentLinkTestUrl || DEFAULT_STRIPE_TEST_PAYMENT_LINK_URL).trim();
+  const liveLinkUrl = String(process.env.STRIPE_PAYMENT_LINK_LIVE_URL || fileConfig.stripePaymentLinkLiveUrl || '').trim();
+  const preferredModeRaw = String(process.env.STRIPE_PAYMENT_MODE || fileConfig.stripePaymentMode || 'auto').trim().toLowerCase();
+  const preferredMode = preferredModeRaw === 'test' || preferredModeRaw === 'live' ? preferredModeRaw : 'auto';
+  const functionsBaseUrl = deriveSupabaseFunctionsBaseUrl(supabaseConfig.url);
+  const statusUrl = String(
+    process.env.STRIPE_PAYMENT_STATUS_URL
+    || fileConfig.paymentStatusUrl
+    || (functionsBaseUrl ? `${functionsBaseUrl}/${STRIPE_PAYMENT_STATUS_FUNCTION_NAME}` : '')
+  ).trim();
+
+  let linkUrl = explicitLinkUrl;
+  let mode = 'test';
+  if (!linkUrl) {
+    if (preferredMode === 'live') {
+      linkUrl = liveLinkUrl || testLinkUrl;
+      mode = liveLinkUrl ? 'live' : 'test';
+    } else if (preferredMode === 'test') {
+      linkUrl = testLinkUrl || liveLinkUrl;
+      mode = testLinkUrl ? 'test' : 'live';
+    } else if (app.isPackaged && liveLinkUrl) {
+      linkUrl = liveLinkUrl;
+      mode = 'live';
+    } else if (testLinkUrl) {
+      linkUrl = testLinkUrl;
+      mode = 'test';
+    } else {
+      linkUrl = liveLinkUrl;
+      mode = 'live';
+    }
+  } else if (linkUrl.includes('/test_')) {
+    mode = 'test';
+  } else if (linkUrl.includes('/live_')) {
+    mode = 'live';
+  } else if (preferredMode === 'live') {
+    mode = 'live';
+  } else if (preferredMode === 'test') {
+    mode = 'test';
+  } else {
+    mode = app.isPackaged ? 'live' : 'test';
+  }
+
+  return {
+    configured: Boolean(linkUrl && statusUrl),
+    linkUrl,
+    mode,
+    statusUrl,
+    anonKey: supabaseConfig.anonKey,
+    testLinkUrl,
+    liveLinkUrl
+  };
+}
+
+function getPaymentStateSnapshot() {
+  const paymentConfig = resolvePaymentConfig();
+  const paymentState = readPaymentState();
+  return {
+    configured: paymentConfig.configured,
+    paid: Boolean(paymentState.paid),
+    verifiedAt: paymentState.verifiedAt,
+    mode: paymentConfig.mode,
+    deviceId: ensurePaymentDeviceId(),
+    hasCheckoutLink: Boolean(paymentConfig.linkUrl),
+    hasStatusEndpoint: Boolean(paymentConfig.statusUrl),
+    error: paymentConfig.linkUrl
+      ? (paymentConfig.statusUrl ? '' : 'The payment status endpoint is not configured yet.')
+      : 'The Stripe payment link is not configured yet.'
+  };
+}
+
+function buildStripeCheckoutUrl(linkUrl, deviceId) {
+  try {
+    const checkoutUrl = new URL(String(linkUrl || '').trim());
+    checkoutUrl.searchParams.set('client_reference_id', String(deviceId || '').trim());
+    return checkoutUrl.toString();
+  } catch (error) {
+    return '';
+  }
+}
+
+async function refreshPaymentStatus() {
+  const paymentConfig = resolvePaymentConfig();
+  const deviceId = ensurePaymentDeviceId();
+  const localState = readPaymentState();
+
+  if (!paymentConfig.statusUrl) {
+    return {
+      success: Boolean(localState.paid),
+      paid: Boolean(localState.paid),
+      mode: paymentConfig.mode,
+      deviceId,
+      verifiedAt: localState.verifiedAt,
+      error: 'The payment status endpoint is not configured yet.'
+    };
+  }
+
+  try {
+    const headers = { 'Content-Type': 'application/json' };
+    if (paymentConfig.anonKey) {
+      headers.Authorization = `Bearer ${paymentConfig.anonKey}`;
+      headers.apikey = paymentConfig.anonKey;
+    }
+
+    const res = await fetch(paymentConfig.statusUrl, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ deviceId })
+    });
+
+    let payload = {};
+    try {
+      payload = await res.json();
+    } catch (error) {}
+
+    if (!res.ok) {
+      throw new Error(payload && payload.error ? String(payload.error) : 'Payment status lookup failed.');
+    }
+
+    const remotePaid = Boolean(payload && payload.paid);
+    if (remotePaid) {
+      markPaymentVerified({
+        verifiedAt: payload.paidAt,
+        sessionId: payload.sessionId,
+        paymentLinkId: payload.paymentLinkId,
+        customerEmail: payload.customerEmail,
+        mode: payload.livemode ? 'live' : paymentConfig.mode,
+        currency: payload.currency,
+        amountTotal: payload.amountTotal
+      });
+      const nextState = readPaymentState();
+      return {
+        success: true,
+        paid: true,
+        deviceId,
+        mode: nextState.mode || (payload.livemode ? 'live' : paymentConfig.mode),
+        verifiedAt: nextState.verifiedAt,
+        customerEmail: nextState.customerEmail,
+        amountTotal: nextState.amountTotal,
+        currency: nextState.currency
+      };
+    }
+
+    return {
+      success: true,
+      paid: Boolean(localState.paid),
+      deviceId,
+      mode: localState.mode || paymentConfig.mode,
+      verifiedAt: localState.verifiedAt,
+      customerEmail: localState.customerEmail,
+      amountTotal: localState.amountTotal,
+      currency: localState.currency
+    };
+  } catch (error) {
+    if (localState.paid) {
+      return {
+        success: true,
+        paid: true,
+        deviceId,
+        mode: localState.mode || paymentConfig.mode,
+        verifiedAt: localState.verifiedAt,
+        customerEmail: localState.customerEmail,
+        amountTotal: localState.amountTotal,
+        currency: localState.currency,
+        error: error && error.message ? error.message : 'Failed to verify payment status right now.'
+      };
+    }
+
+    return {
+      success: false,
+      paid: false,
+      deviceId,
+      mode: paymentConfig.mode,
+      verifiedAt: '',
+      error: error && error.message ? error.message : 'Failed to verify payment status right now.'
+    };
+  }
+}
+
 function isSupabaseConfigured() {
   const config = resolveSupabaseConfig();
   return Boolean(config.url && config.anonKey);
@@ -2152,11 +2419,15 @@ function validateEmailAndPassword(email, password) {
 
 function getStartupPagePath() {
   const srcDir = path.join(__dirname, 'src');
+  const paymentPath = path.join(srcDir, 'payment.html');
   const welcomePath = path.join(srcDir, 'welcome.html');
   const loginPath = path.join(srcDir, 'login.html');
   const indexPath = path.join(srcDir, 'index.html');
   const legacyIndexPath = path.join(__dirname, 'index.html');
 
+  if (fs.existsSync(paymentPath) && !isPaymentVerified()) {
+    return paymentPath;
+  }
   if (fs.existsSync(welcomePath) && !hasSeenWelcomeScreen()) {
     markWelcomeScreenSeen();
     return welcomePath;
@@ -2184,6 +2455,14 @@ function createWindow() {
   applyWindowsTaskbarIdentity(mainWindow);
 
   mainWindow.loadFile(getStartupPagePath());
+  mainWindow.webContents.on('will-navigate', (event, url) => {
+    if (!shouldGatePageBehindPayment(url)) return;
+    const paymentPath = path.join(__dirname, 'src', 'payment.html');
+    if (!fs.existsSync(paymentPath)) return;
+    event.preventDefault();
+    if (!mainWindow || mainWindow.isDestroyed()) return;
+    mainWindow.loadFile(paymentPath);
+  });
   mainWindow.webContents.on('did-finish-load', () => {
     flushPendingRendererLaunchSignals();
   });
@@ -2284,6 +2563,62 @@ ipcMain.on('window-close-approved', (event) => {
   if (!win || win.isDestroyed()) return;
   win.__allowGuardedClose = true;
   win.close();
+});
+
+ipcMain.handle('payment-get-state', async () => {
+  return {
+    success: true,
+    ...getPaymentStateSnapshot()
+  };
+});
+
+ipcMain.handle('payment-open-checkout', async () => {
+  const paymentConfig = resolvePaymentConfig();
+  const deviceId = ensurePaymentDeviceId();
+  if (!paymentConfig.linkUrl) {
+    return {
+      success: false,
+      paid: isPaymentVerified(),
+      error: 'The Stripe payment link is not configured yet.'
+    };
+  }
+
+  const checkoutUrl = buildStripeCheckoutUrl(paymentConfig.linkUrl, deviceId);
+  if (!checkoutUrl) {
+    return {
+      success: false,
+      paid: isPaymentVerified(),
+      error: 'The configured Stripe payment link is invalid.'
+    };
+  }
+
+  try {
+    await shell.openExternal(checkoutUrl);
+    return {
+      success: true,
+      opened: true,
+      paid: isPaymentVerified(),
+      deviceId,
+      mode: paymentConfig.mode
+    };
+  } catch (error) {
+    return {
+      success: false,
+      paid: isPaymentVerified(),
+      error: error && error.message ? error.message : 'Failed to open the Stripe payment page.'
+    };
+  }
+});
+
+ipcMain.handle('payment-refresh-status', async () => {
+  return refreshPaymentStatus();
+});
+
+ipcMain.handle('payment-get-next-page', async () => {
+  return {
+    success: true,
+    page: path.basename(getStartupPagePath())
+  };
 });
 
 // --- AUTH ---

@@ -89,6 +89,13 @@ contextBridge.exposeInMainWorld('authAPI', {
   getPassword: () => ipcRenderer.invoke('auth-get-password')
 });
 
+contextBridge.exposeInMainWorld('paymentAPI', {
+  getState: () => ipcRenderer.invoke('payment-get-state'),
+  openCheckout: () => ipcRenderer.invoke('payment-open-checkout'),
+  refreshStatus: () => ipcRenderer.invoke('payment-refresh-status'),
+  getNextPage: () => ipcRenderer.invoke('payment-get-next-page')
+});
+
 contextBridge.exposeInMainWorld('cloudAPI', {
   upsertNote: (payload) => ipcRenderer.invoke('cloud-upsert-note', payload),
   updateNote: (payload) => ipcRenderer.invoke('cloud-update-note', payload),

@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Noto - Unlock</title>
+  <script>
+    (function () {
+      try {
+        var rawThemeMode = String(window.localStorage.getItem('notoThemeMode') || '').trim().toLowerCase();
+        var themeMode = (rawThemeMode === 'light' || rawThemeMode === 'dark' || rawThemeMode === 'system') ? rawThemeMode : 'system';
+        var appliedTheme = (themeMode === 'light' || themeMode === 'dark')
+          ? themeMode
+          : ((window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light');
+        var rawSizeMode = String(window.localStorage.getItem('notoAppSizeMode') || '').trim().toLowerCase();
+        var sizeMode = (rawSizeMode === 'smaller' || rawSizeMode === 'smallest') ? rawSizeMode : 'normal';
+        document.documentElement.setAttribute('data-theme-mode', themeMode);
+        document.documentElement.setAttribute('data-theme', appliedTheme);
+        document.documentElement.setAttribute('data-app-size-mode', sizeMode);
+      } catch (error) {}
+    })();
+  </script>
+  <link rel="stylesheet" href="auth/auth.css" />
+</head>
+<body data-auth-page="payment">
+  <div class="titlebar">
+    <div class="titlebar-brand">
+      <img src="img/notologo.png" alt="" />
+      Noto
+    </div>
+    <div id="window-controls" class="window-controls">
+      <button id="min-button" class="window-dot-btn" aria-label="Minimize window" type="button">
+        <svg class="window-dot-svg" width="10" height="10" viewBox="0 0 10 10" aria-hidden="true">
+          <circle cx="5" cy="5" r="3"></circle>
+        </svg>
+        <svg class="window-hover-icon" width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 12h10" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+      </button>
+      <button id="max-button" class="window-dot-btn" aria-label="Maximize window" type="button">
+        <svg class="window-dot-svg" width="10" height="10" viewBox="0 0 10 10" aria-hidden="true">
+          <circle cx="5" cy="5" r="3"></circle>
+        </svg>
+        <svg class="window-hover-icon" width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><rect x="7" y="7" width="10" height="10" rx="2" ry="2" fill="none" stroke="currentColor" stroke-width="2.1"></rect></svg>
+      </button>
+      <button id="close-button" class="window-dot-btn" aria-label="Close window" type="button">
+        <svg class="window-dot-svg" width="10" height="10" viewBox="0 0 10 10" aria-hidden="true">
+          <circle cx="5" cy="5" r="3"></circle>
+        </svg>
+        <svg class="window-hover-icon" width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 8l8 8M16 8l-8 8" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+      </button>
+    </div>
+  </div>
+
+  <main class="auth-shell">
+    <section class="auth-card">
+      <p class="auth-kicker">Purchase Required</p>
+      <h1 class="auth-title is-welcome">Unlock <strong>Noto</strong></h1>
+      <p class="auth-copy">Noto is a paid app. Complete the Stripe checkout to unlock this device, then continue to the welcome flow.</p>
+
+      <form id="auth-form" class="auth-form" novalidate>
+        <div class="auth-payment-status">
+          <div class="auth-payment-row">
+            <span>Status</span>
+            <strong id="payment-status-label">Waiting for payment</strong>
+          </div>
+          <div class="auth-payment-row">
+            <span>Checkout</span>
+            <strong id="payment-mode-label">Test mode</strong>
+          </div>
+        </div>
+        <p id="auth-message" class="auth-message" aria-live="polite"></p>
+      </form>
+
+      <div class="auth-footer-links is-actions">
+        <button id="skip-btn" class="auth-inline-link auth-skip-btn" type="button">I already paid</button>
+        <button id="submit-btn" class="auth-submit is-inline" type="submit" form="auth-form">Continue to payment</button>
+      </div>
+    </section>
+  </main>
+
+  <script src="auth/auth.js"></script>
+</body>
+</html>

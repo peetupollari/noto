@@ -1,7 +1,5 @@
 ﻿// Supabase Edge Function: delete-account
 // Requires SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY set in Supabase secrets.
-/// <reference path="../_shared/edge-runtime.d.ts" />
-
 import { serve } from "https://deno.land/std@0.204.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 

@@ -1,7 +1,7 @@
 {
   "name": "noto",
   "productName": "Noto",
-  "version": "0.0.6",
+  "version": "0.0.7",
   "description": "Markdown note-taking application focused on simplicity and ease of use.",
   "main": "main.js",
   "homepage": "https://github.com/peetupollari/noto",

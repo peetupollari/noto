@@ -1,0 +1,38 @@
+{
+  "version": "5",
+  "redirects": {
+    "https://esm.sh/@supabase/supabase-js@2": "https://esm.sh/@supabase/supabase-js@2.104.1",
+    "https://esm.sh/stripe@14?target=denonext": "https://esm.sh/stripe@14.25.0?target=denonext"
+  },
+  "remote": {
+    "https://deno.land/std@0.224.0/async/delay.ts": "f90dd685b97c2f142b8069082993e437b1602b8e2561134827eeb7c12b95c499",
+    "https://deno.land/std@0.224.0/http/server.ts": "f9313804bf6467a1704f45f76cb6cd0a3396a3b31c316035e6a4c2035d1ea514",
+    "https://esm.sh/@supabase/supabase-js@2.104.1": "bad73bfa9aac8a6d896e7a1d4449c7c2ece9a01bccca9e9569f1ed0fc76b5222",
+    "https://esm.sh/stripe@14.25.0?target=denonext": "5c144d95e39f91ac9633debba114dc7260c0e312d70d7d89a8f90bf95ae65595"
+  },
+  "workspace": {
+    "packageJson": {
+      "dependencies": [
+        "npm:@codemirror/autocomplete@^6.20.0",
+        "npm:@codemirror/commands@^6.10.2",
+        "npm:@codemirror/lang-markdown@^6.5.0",
+        "npm:@codemirror/language-data@^6.5.2",
+        "npm:@codemirror/language@^6.12.1",
+        "npm:@codemirror/search@^6.6.0",
+        "npm:@codemirror/state@^6.5.4",
+        "npm:@codemirror/view@^6.39.15",
+        "npm:@lezer/highlight@^1.2.3",
+        "npm:@lezer/markdown@^1.6.3",
+        "npm:@supabase/supabase-js@^2.97.0",
+        "npm:codemirror@^6.0.2",
+        "npm:electron-builder@^26.8.1",
+        "npm:electron-updater@^6.8.3",
+        "npm:electron@41.2.2",
+        "npm:esbuild@~0.27.3",
+        "npm:markdown-it-task-lists@^2.1.1",
+        "npm:markdown-it@^14.1.1",
+        "npm:supabase@^2.76.15"
+      ]
+    }
+  }
+}

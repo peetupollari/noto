@@ -264,6 +264,30 @@ body {
   gap: 12px;
 }
 
+.auth-payment-status {
+  display: grid;
+  gap: 8px;
+  padding: 12px 14px;
+  border: 1px solid var(--auth-input-border);
+  border-radius: 12px;
+  background: var(--auth-input-bg);
+}
+
+.auth-payment-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 12px;
+  color: var(--text-sub);
+}
+
+.auth-payment-row strong {
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 650;
+}
+
 .auth-field {
   display: grid;
   gap: 6px;

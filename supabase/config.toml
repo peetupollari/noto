@@ -1,0 +1,8 @@
+[functions.delete-account]
+verify_jwt = false
+
+[functions.payment-status]
+verify_jwt = false
+
+[functions.stripe-payment-webhook]
+verify_jwt = false
