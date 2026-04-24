@@ -52,27 +52,16 @@
 
   <main class="auth-shell">
     <section class="auth-card">
-      <p class="auth-kicker">Purchase Required</p>
       <h1 class="auth-title is-welcome">Unlock <strong>Noto</strong></h1>
-      <p class="auth-copy">Noto is a paid app. Complete the Stripe checkout to unlock this device, then continue to the welcome flow.</p>
+      <p class="auth-copy">Noto is a paid app. Complete your purchase to continue on this device.</p>
 
       <form id="auth-form" class="auth-form" novalidate>
-        <div class="auth-payment-status">
-          <div class="auth-payment-row">
-            <span>Status</span>
-            <strong id="payment-status-label">Waiting for payment</strong>
-          </div>
-          <div class="auth-payment-row">
-            <span>Checkout</span>
-            <strong id="payment-mode-label">Test mode</strong>
-          </div>
-        </div>
         <p id="auth-message" class="auth-message" aria-live="polite"></p>
       </form>
 
       <div class="auth-footer-links is-actions">
         <button id="skip-btn" class="auth-inline-link auth-skip-btn" type="button">I already paid</button>
-        <button id="submit-btn" class="auth-submit is-inline" type="submit" form="auth-form">Continue to payment</button>
+        <button id="submit-btn" class="auth-submit is-inline" type="submit" form="auth-form">Continue</button>
       </div>
     </section>
   </main>

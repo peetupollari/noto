@@ -6150,6 +6150,7 @@ body.sidebar-ui-disabled .sidebar-seam-toggle {
   border-bottom: 1px solid var(--border);
 }
 .settings-shell-row-left {
+  flex: 1 1 auto;
   min-width: 0;
   display: flex;
   flex-direction: column;
@@ -6164,9 +6165,10 @@ body.sidebar-ui-disabled .sidebar-seam-toggle {
   font-size: 11px;
   color: var(--text-sub);
   line-height: 1.35;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+  overflow-wrap: anywhere;
 }
 .settings-shell-row-right {
   flex: 0 0 auto;

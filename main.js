@@ -35,6 +35,8 @@ const AUTO_UPDATE_REPEAT_INTERVAL_MS = 6 * 60 * 60 * 1000;
 const DEFAULT_STRIPE_TEST_PAYMENT_LINK_URL = 'https://buy.stripe.com/test_eVqfZa4673pK35H7rogw001';
 const STRIPE_PAYMENT_STATUS_FUNCTION_NAME = 'payment-status';
 const APP_RESTRICTED_PAGE_NAMES = new Set(['index.html', 'welcome.html', 'login.html', 'signup.html']);
+const RESET_APP_CONFIRMATION_PHRASE = 'RESET NOTO';
+const RESET_APP_PAYMENT_OVERRIDE_CODE = 'Q4M7-X9V2-L3K8-R6T1';
 
 let supabaseClient = null;
 let supabaseConfigError = '';
@@ -165,6 +167,78 @@ function shouldGatePageBehindPayment(pageRef = '') {
   const pageName = getKnownPageName(pageRef);
   if (!pageName || pageName === 'payment.html') return false;
   return !isPaymentVerified();
+}
+
+function normalizeResetConfirmationText(value) {
+  return String(value || '')
+    .trim()
+    .replace(/\s+/g, ' ')
+    .toUpperCase();
+}
+
+function parseResetConfirmation(value) {
+  const normalized = normalizeResetConfirmationText(value);
+  const paymentResetSignature = `${RESET_APP_CONFIRMATION_PHRASE} ${RESET_APP_PAYMENT_OVERRIDE_CODE}`;
+  return {
+    normalized,
+    confirmed: normalized === RESET_APP_CONFIRMATION_PHRASE || normalized === paymentResetSignature,
+    resetPayment: normalized === paymentResetSignature
+  };
+}
+
+function removeFileIfExists(filePath) {
+  try {
+    if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+    return true;
+  } catch (error) {
+    return false;
+  }
+}
+
+function resetLocalApplicationState(options = {}) {
+  const resetPayment = Boolean(options && options.resetPayment);
+  const previousSettings = readSettingsObject();
+  const nextSettings = {};
+
+  if (!resetPayment) {
+    const preservedPayment = normalizePaymentState(previousSettings.payment);
+    const preservedDeviceId = typeof previousSettings.paymentDeviceId === 'string'
+      ? previousSettings.paymentDeviceId.trim()
+      : '';
+    if (preservedPayment.paid || preservedPayment.sessionId || preservedPayment.verifiedAt || preservedPayment.paymentLinkId) {
+      nextSettings.payment = preservedPayment;
+    }
+    if (/^[a-z0-9_-]{12,128}$/i.test(preservedDeviceId)) {
+      nextSettings.paymentDeviceId = preservedDeviceId;
+    }
+  }
+
+  try {
+    if (supportsOpenOnSystemStartSetting()) {
+      applyOpenOnSystemStartSetting(false);
+    }
+  } catch (error) {}
+
+  removeFileIfExists(APP_STATE_FILE);
+  clearAuthSession();
+  clearAuthPassword();
+
+  if (Object.keys(nextSettings).length > 0) {
+    if (!writeSettings(nextSettings)) {
+      throw new Error('Failed to reset settings.');
+    }
+  } else {
+    removeFileIfExists(SETTINGS_FILE);
+  }
+
+  pendingJumpOpenRequest = null;
+  pendingTrayCreateNoteRequest = false;
+
+  return {
+    success: true,
+    resetPayment,
+    startupPage: path.basename(getStartupPagePath())
+  };
 }
 
 function deriveSupabaseFunctionsBaseUrl(projectUrl = '') {
@@ -2082,7 +2156,7 @@ function getPaymentStateSnapshot() {
     hasStatusEndpoint: Boolean(paymentConfig.statusUrl),
     error: paymentConfig.linkUrl
       ? (paymentConfig.statusUrl ? '' : 'The payment status endpoint is not configured yet.')
-      : 'The Stripe payment link is not configured yet.'
+      : 'The purchase link is not configured yet.'
   };
 }
 
@@ -2579,7 +2653,7 @@ ipcMain.handle('payment-open-checkout', async () => {
     return {
       success: false,
       paid: isPaymentVerified(),
-      error: 'The Stripe payment link is not configured yet.'
+      error: 'The purchase link is not configured yet.'
     };
   }
 
@@ -2588,7 +2662,7 @@ ipcMain.handle('payment-open-checkout', async () => {
     return {
       success: false,
       paid: isPaymentVerified(),
-      error: 'The configured Stripe payment link is invalid.'
+      error: 'The configured purchase link is invalid.'
     };
   }
 
@@ -2605,7 +2679,7 @@ ipcMain.handle('payment-open-checkout', async () => {
     return {
       success: false,
       paid: isPaymentVerified(),
-      error: error && error.message ? error.message : 'Failed to open the Stripe payment page.'
+      error: error && error.message ? error.message : 'Failed to open the purchase page.'
     };
   }
 });
@@ -3876,6 +3950,24 @@ ipcMain.handle('set-app-behavior-settings', async (_event, payload = {}) => {
       error: error && error.message ? error.message : 'Failed to save settings.',
       settings: readAppBehaviorSettings(),
       supportsOpenOnSystemStart: supportsOpenOnSystemStartSetting()
+    };
+  }
+});
+
+ipcMain.handle('reset-local-app-state', async (_event, payload = {}) => {
+  try {
+    const parsed = parseResetConfirmation(payload && payload.confirmationText);
+    if (!parsed.confirmed) {
+      return {
+        success: false,
+        error: `Type "${RESET_APP_CONFIRMATION_PHRASE}" to reset Noto on this device.`
+      };
+    }
+    return resetLocalApplicationState({ resetPayment: parsed.resetPayment });
+  } catch (error) {
+    return {
+      success: false,
+      error: error && error.message ? error.message : 'Failed to reset Noto on this device.'
     };
   }
 });

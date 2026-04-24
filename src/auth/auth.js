@@ -296,7 +296,7 @@
       if (!silent) {
         const message = (result && result.error)
           ? result.error
-          : 'Complete the Stripe checkout in your browser, then come back here.';
+          : 'Finish the purchase in your browser, then come back here.';
         setMessage(message, (result && result.success) ? 'info' : 'error');
       }
 
@@ -368,12 +368,7 @@
         }
 
         setPaymentStatusLabel('Waiting for payment');
-        setMessage(
-          state.mode === 'live'
-            ? 'Complete the Stripe checkout to unlock Noto on this device.'
-            : 'Stripe test mode is active. Complete the checkout with a Stripe test card to unlock Noto on this device.',
-          'info'
-        );
+        setMessage('Complete your purchase to continue on this device.', 'info');
         setInputsEnabled(true);
         await checkPaymentStatus({ silent: false });
       } catch (error) {
@@ -439,21 +434,16 @@
       try {
         const result = await paymentAPI.openCheckout();
         if (!result || !result.success) {
-          setMessage((result && result.error) ? result.error : 'Failed to open the Stripe payment page.', 'error');
+          setMessage((result && result.error) ? result.error : 'Failed to open the purchase page.', 'error');
           return;
         }
         if (result.mode) setPaymentModeLabel(result.mode);
         setPaymentStatusLabel('Waiting for payment');
-        setMessage(
-          result.mode === 'live'
-            ? 'Stripe opened in your browser. Complete the payment there and this page will unlock automatically.'
-            : 'Stripe test checkout opened in your browser. Complete the payment there and this page will unlock automatically.',
-          'info'
-        );
+        setMessage('Finish the purchase in your browser. Noto will continue automatically when it is complete.', 'info');
         startPaymentPolling();
         return;
       } catch (error) {
-        setMessage('Failed to open the Stripe payment page.', 'error');
+        setMessage('Failed to open the purchase page.', 'error');
         return;
       } finally {
         setBusy(false);

@@ -5418,6 +5418,22 @@
         );
       });
       shellContent.appendChild(shortcutsSection.section);
+
+      const resetSection = buildSection('Reset');
+      const resetAction = document.createElement('button');
+      resetAction.type = 'button';
+      resetAction.className = 'btn-danger';
+      setButtonTextWithIcon(resetAction, ICONS.CLOSE_X, 'Reset app');
+      resetAction.onclick = () => {
+        showResetAppModal();
+      };
+      appendRow(
+        resetSection.rows,
+        'Reset this device',
+        resetAction,
+        'Clears local settings, cached data, workspace state, and local sign-in without deleting your account or cloud data.'
+      );
+      shellContent.appendChild(resetSection.section);
     }
 
     function renderThemeCategory() {
@@ -15002,41 +15018,41 @@
     let renaming = false;
 
     els.modalEl.innerHTML = '';
-    const header = buildModalHeader(
-      `Rename ${file.isDirectory ? 'Folder' : 'File'}`,
-      `Current name: "${getItemDisplayName(file)}"`
-    );
+    els.modalEl.classList.add('create-item-modal');
+    els.modalEl.setAttribute('aria-label', `Rename ${file.isDirectory ? 'Folder' : 'File'}`);
 
-    const nameLabel = document.createElement('label');
-    nameLabel.textContent = 'New name';
-    nameLabel.className = 'modal-label';
+    const closeBtn = document.createElement('button');
+    closeBtn.type = 'button';
+    closeBtn.className = 'modal-close-btn create-item-modal-close';
+    closeBtn.setAttribute('aria-label', 'Close popup');
+    closeBtn.innerHTML = ICONS.CLOSE_X;
+    closeBtn.onclick = () => closeModal();
 
     const nameInput = document.createElement('input');
     nameInput.type = 'text';
     nameInput.autocomplete = 'off';
+    nameInput.setAttribute('aria-label', 'New name');
+    nameInput.placeholder = file.isDirectory ? 'rename folder' : 'rename file';
     nameInput.value = file.isDirectory
       ? file.name
       : file.name.replace(/\.md$/i, '');
-    nameInput.select();
 
     const hint = document.createElement('div');
     hint.className = 'modal-text-muted';
     hint.textContent = file.isDirectory
-      ? 'Folder names cannot include slashes.'
-      : 'If no extension is provided, ".md" will be added.';
+      ? `Current name: "${getItemDisplayName(file)}". Folder names cannot include slashes.`
+      : `Current name: "${getItemDisplayName(file)}". If no extension is provided, ".md" will be added.`;
 
     const errorText = document.createElement('div');
     errorText.className = 'modal-error';
 
     const actions = document.createElement('div');
-    actions.className = 'actions';
-    const cancelBtn = document.createElement('button');
-    cancelBtn.id = 'modal-cancel';
-    cancelBtn.textContent = 'Cancel';
+    actions.className = 'actions create-item-actions';
     const renameBtn = document.createElement('button');
-    renameBtn.className = 'btn-primary';
+    renameBtn.type = 'button';
+    renameBtn.className = 'center-search-popup-action is-commit create-item-create-btn';
     renameBtn.textContent = 'Rename';
-    actions.append(cancelBtn, renameBtn);
+    actions.append(renameBtn);
 
     const submitRename = async () => {
       if (renaming) return;
@@ -15049,7 +15065,6 @@
       }
       renaming = true;
       renameBtn.disabled = true;
-      cancelBtn.disabled = true;
       try {
         const result = await renameSidebarItem(file, candidate);
         if (!result.success) {
@@ -15060,11 +15075,9 @@
       } finally {
         renaming = false;
         renameBtn.disabled = false;
-        cancelBtn.disabled = false;
       }
     };
 
-    cancelBtn.onclick = () => closeModal();
     renameBtn.onclick = submitRename;
     nameInput.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') {
@@ -15074,17 +15087,135 @@
     });
 
     const formSection = document.createElement('div');
-    formSection.className = 'modal-section';
-    formSection.append(nameLabel, nameInput, hint);
+    formSection.className = 'modal-section create-item-modal-body';
 
-    const footerSection = document.createElement('div');
-    footerSection.className = 'modal-section';
-    footerSection.append(errorText, actions);
+    const nameField = document.createElement('label');
+    nameField.className = 'create-item-name-field';
+    const nameIcon = document.createElement('span');
+    nameIcon.className = 'create-item-name-icon';
+    nameIcon.setAttribute('aria-hidden', 'true');
+    nameIcon.innerHTML = file.isDirectory ? ICONS.FOLDER : ICONS.FILE;
+    nameField.append(nameIcon, nameInput);
 
-    els.modalEl.append(header, formSection, footerSection);
+    formSection.append(nameField, hint, errorText, actions);
+
+    els.modalEl.append(closeBtn, formSection);
     els.modalBackdrop.setAttribute('aria-hidden', 'false');
     bindModalCloseHandlers();
     nameInput.focus();
+    nameInput.select();
+  }
+
+  function showCustomizeItemModal(file) {
+    if (!els.modalBackdrop || !els.modalEl || !file) return;
+    let customizing = false;
+    const existingStyle = getSidebarItemStyle(file.path);
+    const controls = createSidebarItemAppearanceControls({
+      isDirectory: Boolean(file.isDirectory),
+      initialStyle: existingStyle || {},
+      layout: 'hero'
+    });
+    controls.section.classList.add('create-item-appearance-section');
+
+    els.modalEl.innerHTML = '';
+    els.modalEl.classList.add('create-item-modal');
+    els.modalEl.setAttribute('aria-label', `Customize ${file.isDirectory ? 'Folder' : 'File'}`);
+
+    const closeBtn = document.createElement('button');
+    closeBtn.type = 'button';
+    closeBtn.className = 'modal-close-btn create-item-modal-close';
+    closeBtn.setAttribute('aria-label', 'Close popup');
+    closeBtn.innerHTML = ICONS.CLOSE_X;
+    closeBtn.onclick = () => closeModal();
+
+    // Rename input field
+    const nameInput = document.createElement('input');
+    nameInput.type = 'text';
+    nameInput.autocomplete = 'off';
+    nameInput.setAttribute('aria-label', 'New name');
+    nameInput.placeholder = file.isDirectory ? 'rename folder' : 'rename file';
+    nameInput.value = file.isDirectory
+      ? file.name
+      : file.name.replace(/\.md$/i, '');
+
+    const errorText = document.createElement('div');
+    errorText.className = 'modal-error';
+
+    const formSection = document.createElement('div');
+    formSection.className = 'modal-section create-item-modal-body';
+
+    const nameField = document.createElement('label');
+    nameField.className = 'create-item-name-field';
+    const nameIcon = document.createElement('span');
+    nameIcon.className = 'create-item-name-icon';
+    nameIcon.setAttribute('aria-hidden', 'true');
+    nameIcon.innerHTML = file.isDirectory ? ICONS.FOLDER : ICONS.FILE;
+    nameField.append(nameIcon, nameInput);
+
+    const appearanceActions = document.createElement('div');
+    appearanceActions.className = 'create-item-appearance-actions';
+    const iconField = controls.section.querySelector('.sidebar-dropdown-field-hero.is-left');
+    const colorField = controls.section.querySelector('.sidebar-dropdown-field-hero.is-right');
+    if (iconField) appearanceActions.appendChild(iconField);
+    if (colorField) appearanceActions.appendChild(colorField);
+
+    const actions = document.createElement('div');
+    actions.className = 'actions create-item-actions';
+    const saveBtn = document.createElement('button');
+    saveBtn.type = 'button';
+    saveBtn.className = 'center-search-popup-action is-commit create-item-create-btn';
+    saveBtn.textContent = 'Save';
+    actions.append(saveBtn);
+
+    const submitCustomize = async () => {
+      if (customizing) return;
+      errorText.textContent = '';
+      const candidate = nameInput.value.trim();
+      if (!candidate) {
+        errorText.textContent = 'Name is required.';
+        nameInput.focus();
+        return;
+      }
+      customizing = true;
+      saveBtn.disabled = true;
+      try {
+        // Rename the item
+        const renameResult = await renameSidebarItem(file, candidate);
+        if (!renameResult.success) {
+          errorText.textContent = renameResult.error || 'Failed to rename item.';
+          return;
+        }
+        // Apply the new appearance style to the renamed path
+        const newPath = renameResult.path || file.path;
+        setSidebarItemStyle(newPath, controls.getStyle());
+        await reloadSidebar();
+        saveAppState();
+        closeModal();
+      } finally {
+        customizing = false;
+        saveBtn.disabled = false;
+      }
+    };
+
+    saveBtn.onclick = submitCustomize;
+    nameInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        submitCustomize();
+      }
+    });
+
+    const controlsRow = document.createElement('div');
+    controlsRow.className = 'create-item-controls-row';
+    controlsRow.append(appearanceActions, actions);
+
+    formSection.append(controls.section, nameField, errorText, controlsRow);
+
+    els.modalEl.append(closeBtn, formSection);
+    els.modalBackdrop.setAttribute('aria-hidden', 'false');
+    bindModalCloseHandlers();
+    nameInput.focus();
+    nameInput.select();
   }
 
   async function showMoveItemModal(file) {
@@ -15423,12 +15554,9 @@
       menu.appendChild(el);
     };
 
-    createItem('Rename', async () => {
-      showRenameItemModal(file);
+    createItem('Customize', async () => {
+      showCustomizeItemModal(file);
     }, { icon: ICONS.SIDEBAR_RENAME || ICONS.ROLE_EDITOR });
-    createItem('Customize icon & color', async () => {
-      showSidebarItemAppearanceModal(file);
-    }, { icon: ICONS.SIDEBAR_APPEARANCE || ICONS.ROLE_EDITOR });
     const safePath = normalizeStoragePath(file && file.path);
     if (safePath) {
       const currentlyPinned = isStoragePathPinned(safePath);
@@ -17697,12 +17825,29 @@
     if (typeof window.alert === 'function') window.alert(message);
   }
 
+  const RESET_APP_CONFIRMATION_TEXT = 'RESET NOTO';
   const PROFILE_COLOR_STORAGE_KEY = 'notoProfileColors';
   const PASSWORD_PLACEHOLDER = '********';
   const PASSWORD_LENGTH_KEY = 'notoPasswordLength';
   const PASSWORD_PLAIN_KEY = 'notoPasswordPlain';
   let cachedPasswordPlain = '';
   let cachedPasswordLength = 0;
+
+  function normalizeResetConfirmationInput(value) {
+    return String(value || '')
+      .trim()
+      .replace(/\s+/g, ' ')
+      .toUpperCase();
+  }
+
+  function clearLocalBrowserStateForReset() {
+    try {
+      window.localStorage.clear();
+    } catch (error) {}
+    try {
+      window.sessionStorage.clear();
+    } catch (error) {}
+  }
 
   function loadPasswordFromLocalStorage() {
     let plain = '';
@@ -18690,6 +18835,110 @@
     };
   }
 
+  function showResetAppModal() {
+    if (!els.modalBackdrop || !els.modalEl) return;
+    els.modalEl.classList.remove('settings-shell-modal');
+    els.modalEl.innerHTML = '';
+
+    const header = buildModalHeader(
+      'Reset Noto',
+      'This clears local settings, cached data, sign-in on this device, and returns Noto to a fresh local state.'
+    );
+
+    const bodySection = document.createElement('div');
+    bodySection.className = 'modal-section';
+
+    const label = document.createElement('label');
+    label.className = 'modal-label';
+    label.setAttribute('for', 'reset-app-confirm-input');
+    label.textContent = `Type ${RESET_APP_CONFIRMATION_TEXT} to continue`;
+
+    const input = document.createElement('input');
+    input.id = 'reset-app-confirm-input';
+    input.type = 'text';
+    input.className = 'modal-input';
+    input.autocomplete = 'off';
+    input.spellcheck = false;
+    input.placeholder = RESET_APP_CONFIRMATION_TEXT;
+
+    const hint = document.createElement('p');
+    hint.className = 'modal-text-muted';
+    hint.textContent = 'Your local workspace state resets here. Your purchase stays active on this device, and nothing is deleted from your account.';
+
+    const errorText = document.createElement('p');
+    errorText.className = 'modal-error';
+
+    bodySection.append(label, input, hint, errorText);
+
+    const actions = document.createElement('div');
+    actions.className = 'actions';
+
+    const cancelBtn = document.createElement('button');
+    cancelBtn.id = 'modal-cancel';
+    cancelBtn.textContent = 'Cancel';
+
+    const resetBtn = document.createElement('button');
+    resetBtn.className = 'btn-danger';
+    resetBtn.textContent = 'Reset app';
+    resetBtn.disabled = true;
+
+    const syncResetAvailability = () => {
+      const normalized = normalizeResetConfirmationInput(input.value);
+      resetBtn.disabled = !(normalized === RESET_APP_CONFIRMATION_TEXT || normalized.startsWith(`${RESET_APP_CONFIRMATION_TEXT} `));
+    };
+
+    input.addEventListener('input', () => {
+      errorText.textContent = '';
+      syncResetAvailability();
+    });
+
+    input.addEventListener('keydown', (event) => {
+      if (event.key !== 'Enter' || resetBtn.disabled) return;
+      event.preventDefault();
+      resetBtn.click();
+    });
+
+    cancelBtn.onclick = () => closeModal();
+    resetBtn.onclick = async () => {
+      resetBtn.disabled = true;
+      cancelBtn.disabled = true;
+      input.disabled = true;
+      errorText.textContent = '';
+      try {
+        if (!window.api || typeof window.api.resetLocalAppState !== 'function') {
+          throw new Error('Reset API unavailable.');
+        }
+        const result = await window.api.resetLocalAppState(input.value);
+        if (!result || !result.success) {
+          throw new Error((result && result.error) ? result.error : 'Failed to reset Noto on this device.');
+        }
+        clearLocalBrowserStateForReset();
+        closeModal();
+        window.location.replace(String(result.startupPage || 'welcome.html'));
+      } catch (error) {
+        errorText.textContent = error && error.message ? error.message : 'Failed to reset Noto on this device.';
+        input.disabled = false;
+        cancelBtn.disabled = false;
+        syncResetAvailability();
+        input.focus();
+        input.select();
+      }
+    };
+
+    actions.append(cancelBtn, resetBtn);
+    const footerSection = document.createElement('div');
+    footerSection.className = 'modal-section';
+    footerSection.append(actions);
+
+    els.modalEl.append(header, bodySection, footerSection);
+    els.modalBackdrop.setAttribute('aria-hidden', 'false');
+    bindModalCloseHandlers();
+
+    syncResetAvailability();
+    input.focus();
+    input.select();
+  }
+
   function showUploadToCloudConfirmModal(tab) {
     if (!els.modalBackdrop || !els.modalEl) return Promise.resolve(false);
     return new Promise((resolve) => {
@@ -19404,37 +19653,56 @@
     const existingStyle = getSidebarItemStyle(file.path);
     const controls = createSidebarItemAppearanceControls({
       isDirectory: Boolean(file.isDirectory),
-      initialStyle: existingStyle || {}
+      initialStyle: existingStyle || {},
+      layout: 'hero'
     });
+    controls.section.classList.add('create-item-appearance-section');
 
     els.modalEl.innerHTML = '';
-    const header = buildModalHeader(
-      `Icon & Color for ${file.isDirectory ? 'Folder' : 'File'}`,
-      getItemDisplayName(file)
-    );
+    els.modalEl.classList.add('create-item-modal');
+    els.modalEl.setAttribute('aria-label', `Customize ${file.isDirectory ? 'Folder' : 'File'} appearance`);
+
+    const closeBtn = document.createElement('button');
+    closeBtn.type = 'button';
+    closeBtn.className = 'modal-close-btn create-item-modal-close';
+    closeBtn.setAttribute('aria-label', 'Close popup');
+    closeBtn.innerHTML = ICONS.CLOSE_X;
+    closeBtn.onclick = () => closeModal();
 
     const formSection = document.createElement('div');
-    formSection.className = 'modal-section';
-    formSection.append(controls.section);
+    formSection.className = 'modal-section create-item-modal-body';
+
+    const nameField = document.createElement('div');
+    nameField.className = 'create-item-name-field is-static';
+    const nameIcon = document.createElement('span');
+    nameIcon.className = 'create-item-name-icon';
+    nameIcon.setAttribute('aria-hidden', 'true');
+    nameIcon.innerHTML = file.isDirectory ? ICONS.FOLDER : ICONS.FILE;
+    const nameInput = document.createElement('input');
+    nameInput.type = 'text';
+    nameInput.readOnly = true;
+    nameInput.tabIndex = -1;
+    nameInput.value = getItemDisplayName(file);
+    nameInput.setAttribute('aria-label', 'Current item name');
+    nameField.append(nameIcon, nameInput);
+
+    const appearanceActions = document.createElement('div');
+    appearanceActions.className = 'create-item-appearance-actions';
+    const iconField = controls.section.querySelector('.sidebar-dropdown-field-hero.is-left');
+    const colorField = controls.section.querySelector('.sidebar-dropdown-field-hero.is-right');
+    if (iconField) appearanceActions.appendChild(iconField);
+    if (colorField) appearanceActions.appendChild(colorField);
 
     const actions = document.createElement('div');
-    actions.className = 'actions';
-    const cancelBtn = document.createElement('button');
-    cancelBtn.id = 'modal-cancel';
-    cancelBtn.textContent = 'Cancel';
+    actions.className = 'actions create-item-actions';
     const saveBtn = document.createElement('button');
-    saveBtn.className = 'btn-primary';
+    saveBtn.type = 'button';
+    saveBtn.className = 'center-search-popup-action is-commit create-item-create-btn';
     saveBtn.textContent = 'Save';
-    actions.append(cancelBtn, saveBtn);
+    actions.append(saveBtn);
 
-    const footerSection = document.createElement('div');
-    footerSection.className = 'modal-section';
-    footerSection.append(actions);
-
-    cancelBtn.onclick = () => closeModal();
     saveBtn.onclick = async () => {
       saveBtn.disabled = true;
-      cancelBtn.disabled = true;
       try {
         setSidebarItemStyle(file.path, controls.getStyle());
         await reloadSidebar();
@@ -19442,11 +19710,20 @@
         closeModal();
       } finally {
         saveBtn.disabled = false;
-        cancelBtn.disabled = false;
       }
     };
 
-    els.modalEl.append(header, formSection, footerSection);
+    const controlsRow = document.createElement('div');
+    controlsRow.className = 'create-item-controls-row';
+    controlsRow.append(appearanceActions, actions);
+
+    const hint = document.createElement('div');
+    hint.className = 'modal-text-muted';
+    hint.textContent = 'Choose a custom icon and color, or keep the default appearance.';
+
+    formSection.append(controls.section, nameField, controlsRow, hint);
+
+    els.modalEl.append(closeBtn, formSection);
     els.modalBackdrop.setAttribute('aria-hidden', 'false');
     bindModalCloseHandlers();
   }

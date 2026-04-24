@@ -17,6 +17,7 @@ contextBridge.exposeInMainWorld('api', {
   getAppReleaseInfo: async () => ipcRenderer.invoke('get-app-release-info'),
   checkForAppUpdate: async () => ipcRenderer.invoke('check-for-app-update'),
   setAppBehaviorSettings: async (settings) => ipcRenderer.invoke('set-app-behavior-settings', settings),
+  resetLocalAppState: async (confirmationText) => ipcRenderer.invoke('reset-local-app-state', { confirmationText }),
   openImportFiles: async () => ipcRenderer.invoke('open-import-files'),
   // Presentation Mode
   getDisplays: async () => ipcRenderer.invoke('get-displays'),
