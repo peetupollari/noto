@@ -18143,6 +18143,47 @@
     clearModalCleanup();
     els.modalBackdrop.setAttribute('aria-hidden', 'true');
     els.modalBackdrop.style.display = '';
+    // Close any portaled dropdown panels that may have been moved to document.body
+    try {
+      const portaled = Array.from(document.querySelectorAll('.sidebar-dropdown-panel.is-portal'));
+      portaled.forEach((panel) => {
+        try {
+          if (panel._portalRepositionHandler) {
+            window.removeEventListener('resize', panel._portalRepositionHandler);
+            window.removeEventListener('scroll', panel._portalRepositionHandler, { passive: true });
+            delete panel._portalRepositionHandler;
+          }
+          panel.classList.remove('is-portal');
+          if (panel._portalOriginalParent) {
+            const parent = panel._portalOriginalParent;
+            try {
+              if (panel._portalOriginalNextSibling && parent.contains(panel._portalOriginalNextSibling)) {
+                parent.insertBefore(panel, panel._portalOriginalNextSibling);
+              } else {
+                parent.appendChild(panel);
+              }
+            } catch (err) {
+              if (parent && parent.appendChild) parent.appendChild(panel);
+            }
+            delete panel._portalOriginalParent;
+            delete panel._portalOriginalNextSibling;
+          } else {
+            if (panel.parentNode) panel.parentNode.removeChild(panel);
+          }
+          panel.style.position = '';
+          panel.style.left = '';
+          panel.style.top = '';
+          panel.style.minWidth = '';
+          panel.style.maxWidth = '';
+          panel.style.zIndex = '';
+          panel.hidden = true;
+        } catch (err) {
+          // swallow
+        }
+      });
+    } catch (err) {
+      // swallow
+    }
     els.modalEl.classList.remove('settings-shell-modal');
     els.modalEl.classList.remove('create-item-modal');
     els.modalEl.removeAttribute('aria-label');
@@ -19426,21 +19467,92 @@
     let iconDropdownOpen = false;
     let colorDropdownOpen = false;
 
+    const positionPortalPanel = (panel, trigger) => {
+      if (!panel || !trigger) return;
+      const rect = trigger.getBoundingClientRect();
+      const vw = Math.max(document.documentElement.clientWidth || 0, window.innerWidth || 0);
+      const desiredWidth = Math.max(trigger.offsetWidth || 160, 240);
+      panel.style.position = 'fixed';
+      panel.style.zIndex = '12000';
+      panel.style.minWidth = `${desiredWidth}px`;
+      panel.style.maxWidth = `calc(100vw - 16px)`;
+      // clamp left so the panel stays inside the viewport
+      const left = Math.min(Math.max(rect.left, 8), Math.max(8, vw - desiredWidth - 8));
+      const top = Math.min(rect.bottom + 6, Math.max(8, window.innerHeight - 8));
+      panel.style.left = `${left}px`;
+      panel.style.top = `${top}px`;
+    };
+
+    const openPanelPortal = (panel, trigger) => {
+      if (!panel || !trigger) return;
+      if (!panel._portalOriginalParent) {
+        panel._portalOriginalParent = panel.parentNode;
+        panel._portalOriginalNextSibling = panel.nextSibling;
+      }
+      if (!panel.classList.contains('is-portal')) {
+        panel.classList.add('is-portal');
+        document.body.appendChild(panel);
+        panel.hidden = false;
+        panel._portalRepositionHandler = () => positionPortalPanel(panel, trigger);
+        window.addEventListener('resize', panel._portalRepositionHandler);
+        window.addEventListener('scroll', panel._portalRepositionHandler, { passive: true });
+      }
+      positionPortalPanel(panel, trigger);
+    };
+
+    const closePanelPortal = (panel) => {
+      if (!panel) return;
+      if (panel._portalRepositionHandler) {
+        window.removeEventListener('resize', panel._portalRepositionHandler);
+        window.removeEventListener('scroll', panel._portalRepositionHandler, { passive: true });
+        delete panel._portalRepositionHandler;
+      }
+      if (panel.classList.contains('is-portal')) {
+        panel.classList.remove('is-portal');
+        if (panel._portalOriginalParent) {
+          const parent = panel._portalOriginalParent;
+          if (panel._portalOriginalNextSibling && parent.contains(panel._portalOriginalNextSibling)) {
+            parent.insertBefore(panel, panel._portalOriginalNextSibling);
+          } else {
+            parent.appendChild(panel);
+          }
+          delete panel._portalOriginalParent;
+          delete panel._portalOriginalNextSibling;
+        } else {
+          if (panel.parentNode) panel.parentNode.removeChild(panel);
+        }
+      }
+      panel.style.position = '';
+      panel.style.left = '';
+      panel.style.top = '';
+      panel.style.minWidth = '';
+      panel.style.maxWidth = '';
+      panel.style.zIndex = '';
+      panel.hidden = true;
+    };
+
     const setIconOpen = (open) => {
       iconDropdownOpen = Boolean(open);
       iconField.classList.toggle('is-open', iconDropdownOpen);
-      iconPanel.hidden = !iconDropdownOpen;
       iconTrigger.setAttribute('aria-expanded', iconDropdownOpen ? 'true' : 'false');
       if (iconDropdownOpen) {
+        openPanelPortal(iconPanel, iconTrigger);
         iconSearch.focus();
         iconSearch.select();
+      } else {
+        closePanelPortal(iconPanel);
       }
     };
+
     const setColorOpen = (open) => {
       colorDropdownOpen = Boolean(open);
       colorField.classList.toggle('is-open', colorDropdownOpen);
-      colorPanel.hidden = !colorDropdownOpen;
       colorTrigger.setAttribute('aria-expanded', colorDropdownOpen ? 'true' : 'false');
+      if (colorDropdownOpen) {
+        openPanelPortal(colorPanel, colorTrigger);
+      } else {
+        closePanelPortal(colorPanel);
+      }
     };
 
     const colorOptions = () => {
@@ -19601,10 +19713,12 @@
     });
 
     iconField.addEventListener('focusout', (evt) => {
-      if (!iconField.contains(evt.relatedTarget)) setIconOpen(false);
+      const related = evt.relatedTarget;
+      if (!iconField.contains(related) && !iconPanel.contains(related)) setIconOpen(false);
     });
     colorField.addEventListener('focusout', (evt) => {
-      if (!colorField.contains(evt.relatedTarget)) setColorOpen(false);
+      const related = evt.relatedTarget;
+      if (!colorField.contains(related) && !colorPanel.contains(related)) setColorOpen(false);
     });
 
     iconField.addEventListener('keydown', (evt) => {

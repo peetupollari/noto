@@ -8328,6 +8328,15 @@ body.sidebar-ui-disabled .sidebar-seam-toggle {
   gap: 6px;
 }
 
+.sidebar-dropdown-panel.is-portal {
+  position: fixed;
+  top: auto;
+  left: auto;
+  right: auto;
+  z-index: 12000;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.18);
+}
+
 .sidebar-dropdown-field-hero .sidebar-dropdown-panel {
   width: 240px;
 }
