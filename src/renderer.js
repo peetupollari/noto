@@ -5613,24 +5613,22 @@
     }
 
       function renderSettingsCategoryContent() {
+        const scrollTop = shellContent.scrollTop || 0;
         shellContent.innerHTML = '';
         shellContent.classList.remove('is-profile-signin-state');
         if (settingsState.activeCategory === 'account') {
           renderAccountCategory();
-          return;
+        } else if (settingsState.activeCategory === 'settings') {
+          renderSettingsCategory();
+        } else if (settingsState.activeCategory === 'theme') {
+          renderThemeCategory();
+        } else if (settingsState.activeCategory === 'notifications') {
+          renderNotificationsCategory();
         }
-      if (settingsState.activeCategory === 'settings') {
-        renderSettingsCategory();
-        return;
+        requestAnimationFrame(() => {
+          shellContent.scrollTop = scrollTop;
+        });
       }
-      if (settingsState.activeCategory === 'theme') {
-        renderThemeCategory();
-        return;
-      }
-      if (settingsState.activeCategory === 'notifications') {
-        renderNotificationsCategory();
-      }
-    }
 
     function setActiveSettingsCategory(nextCategory) {
       settingsState.activeCategory = nextCategory;
