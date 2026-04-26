@@ -5271,11 +5271,33 @@ function createEditor({ parent, doc = "", mode = "rich", onDocChange, onSelectio
               0,
               view.scrollDOM.scrollTop + coords.top - scrollerRect.top - yMargin
             );
-            if (typeof view.scrollDOM.scrollTo === "function") {
-              view.scrollDOM.scrollTo({ top: targetTop, behavior: "smooth" });
+            const startTop = Number.isFinite(view.scrollDOM.scrollTop) ? view.scrollDOM.scrollTop : 0;
+            const delta = targetTop - startTop;
+            if (Math.abs(delta) <= 1) {
+              view.scrollDOM.scrollTop = targetTop;
               return;
             }
-            view.scrollDOM.scrollTop = targetTop;
+            const priorRaf = Number(view.scrollDOM.__notoSmoothScrollRaf || 0);
+            if (priorRaf) cancelAnimationFrame(priorRaf);
+            const startTime = typeof performance !== "undefined" && typeof performance.now === "function"
+              ? performance.now()
+              : Date.now();
+            const duration = Math.max(140, Math.min(320, Math.abs(delta) * 0.35));
+            const easeInOut = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+            const tick = (now) => {
+              if (!view.scrollDOM || !view.scrollDOM.isConnected) return;
+              const currentTime = Number.isFinite(now) ? now : Date.now();
+              const elapsed = currentTime - startTime;
+              const progress = duration > 0 ? Math.max(0, Math.min(1, elapsed / duration)) : 1;
+              view.scrollDOM.scrollTop = startTop + (delta * easeInOut(progress));
+              if (progress < 1) {
+                view.scrollDOM.__notoSmoothScrollRaf = requestAnimationFrame(tick);
+                return;
+              }
+              view.scrollDOM.scrollTop = targetTop;
+              view.scrollDOM.__notoSmoothScrollRaf = 0;
+            };
+            view.scrollDOM.__notoSmoothScrollRaf = requestAnimationFrame(tick);
             return;
           }
         } catch (_) {}

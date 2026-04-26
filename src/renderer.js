@@ -1821,6 +1821,37 @@
     const smoothScrollTargetIntoView = (targetEl, options = {}) => {
       if (!(targetEl instanceof Element)) return false;
       const margin = Number.isFinite(Number(options.yMargin)) ? Math.max(0, Number(options.yMargin)) : 56;
+      const animateScrollTop = (scrollEl, targetTop) => {
+        if (!scrollEl) return false;
+        const startTop = Number.isFinite(scrollEl.scrollTop) ? scrollEl.scrollTop : 0;
+        const delta = targetTop - startTop;
+        if (Math.abs(delta) <= 1) {
+          scrollEl.scrollTop = targetTop;
+          return true;
+        }
+        const priorRaf = Number(scrollEl.__notoSmoothScrollRaf || 0);
+        if (priorRaf) cancelAnimationFrame(priorRaf);
+        const startTime = typeof performance !== 'undefined' && typeof performance.now === 'function'
+          ? performance.now()
+          : Date.now();
+        const duration = Math.max(140, Math.min(320, Math.abs(delta) * 0.35));
+        const easeInOut = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+        const tick = (now) => {
+          if (!scrollEl || !scrollEl.isConnected) return;
+          const currentTime = Number.isFinite(now) ? now : Date.now();
+          const elapsed = currentTime - startTime;
+          const progress = duration > 0 ? Math.max(0, Math.min(1, elapsed / duration)) : 1;
+          scrollEl.scrollTop = startTop + (delta * easeInOut(progress));
+          if (progress < 1) {
+            scrollEl.__notoSmoothScrollRaf = requestAnimationFrame(tick);
+            return;
+          }
+          scrollEl.scrollTop = targetTop;
+          scrollEl.__notoSmoothScrollRaf = 0;
+        };
+        scrollEl.__notoSmoothScrollRaf = requestAnimationFrame(tick);
+        return true;
+      };
       let scrollParent = targetEl.parentElement;
       while (scrollParent && scrollParent !== document.body && scrollParent !== document.documentElement) {
         const style = window.getComputedStyle(scrollParent);
@@ -1829,17 +1860,18 @@
           const parentRect = scrollParent.getBoundingClientRect();
           const targetRect = targetEl.getBoundingClientRect();
           const targetTop = Math.max(0, scrollParent.scrollTop + targetRect.top - parentRect.top - margin);
-          if (typeof scrollParent.scrollTo === 'function') {
-            scrollParent.scrollTo({ top: targetTop, behavior: 'smooth' });
-            return true;
-          }
-          scrollParent.scrollTop = targetTop;
-          return true;
+          return animateScrollTop(scrollParent, targetTop);
         }
         scrollParent = scrollParent.parentElement;
       }
+      const docScroller = document.scrollingElement || document.documentElement || document.body;
+      if (docScroller && typeof targetEl.getBoundingClientRect === 'function') {
+        const rect = targetEl.getBoundingClientRect();
+        const targetTop = Math.max(0, (Number(docScroller.scrollTop) || 0) + rect.top - margin);
+        if (animateScrollTop(docScroller, targetTop)) return true;
+      }
       if (typeof targetEl.scrollIntoView === 'function') {
-        targetEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        targetEl.scrollIntoView({ block: 'start' });
         return true;
       }
       return false;
@@ -16080,7 +16112,7 @@
 
       const row = document.createElement('div');
       row.className = 'file-item-row bin-row';
-      row.style.padding = `3px 1px 3px ${2 + (depth * 14)}px`;
+      row.style.padding = `3px 1px 3px ${depth * 12}px`;
 
       const arrow = document.createElement('div');
       const hasChildren = Array.isArray(node.children) && node.children.length > 0;
@@ -16107,7 +16139,7 @@
       content.className = 'bin-row-content';
       content.append(name, meta);
 
-      row.append(arrow, checkbox, icon, content);
+      row.append(checkbox, arrow, icon, content);
       li.appendChild(row);
 
       const childrenEl = document.createElement('ul');
