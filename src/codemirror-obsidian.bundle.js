@@ -65122,13 +65122,104 @@
   var renderedMarkdownCache = /* @__PURE__ */ new Map();
   var RENDERED_MARKDOWN_CACHE_LIMIT = 24;
   var NOTE_REFERENCE_SCHEME = "noto-note://";
+  var HEADING_REFERENCE_PREFIX = "#";
+  var BRACKET_LINK_WIDGET_CLASS = "cm-bracket-link-widget";
+  var activeEditorViews = /* @__PURE__ */ new Set();
+  var bracketReferenceResolver = null;
+  var bracketReferenceResolverVersion = 0;
   function shouldCacheRenderedMarkdown(kind, raw3) {
     const normalizedKind = String(kind || "").toLowerCase();
     const text6 = String(raw3 || "");
     return normalizedKind === "table" || text6.length >= 2e3;
   }
   function getRenderedMarkdownCacheKey(kind, raw3) {
-    return `${String(kind || "").toLowerCase()}\0${String(raw3 || "")}`;
+    return `${bracketReferenceResolverVersion}\0${String(kind || "").toLowerCase()}\0${String(raw3 || "")}`;
+  }
+  function normalizeBracketReferenceResult(result, fallbackLabel = "") {
+    if (!result || typeof result !== "object") return null;
+    const kind = String(result.kind || "").trim().toLowerCase();
+    if (kind === "heading") {
+      const headingRef = String(result.headingRef || result.slug || result.label || fallbackLabel).trim();
+      if (!headingRef) return null;
+      return {
+        kind: "heading",
+        href: `${HEADING_REFERENCE_PREFIX}${encodeURIComponent(headingRef)}`,
+        headingRef
+      };
+    }
+    if (kind === "note") {
+      const noteRef = String(result.noteRef || result.label || fallbackLabel).trim();
+      if (!noteRef) return null;
+      return {
+        kind: "note",
+        href: `${NOTE_REFERENCE_SCHEME}${encodeURIComponent(noteRef)}`,
+        noteRef
+      };
+    }
+    if (kind === "external") {
+      const href = String(result.href || "").trim();
+      if (!href) return null;
+      return {
+        kind: "external",
+        href
+      };
+    }
+    return null;
+  }
+  function resolveBracketReference(label) {
+    if (typeof bracketReferenceResolver !== "function") return null;
+    try {
+      return normalizeBracketReferenceResult(bracketReferenceResolver(label), label);
+    } catch (_) {
+      return null;
+    }
+  }
+  var refreshBracketRenderingEffect = StateEffect.define();
+  function setBracketReferenceResolver(resolver) {
+    bracketReferenceResolver = typeof resolver === "function" ? resolver : null;
+    bracketReferenceResolverVersion += 1;
+    renderedMarkdownCache.clear();
+    for (const view of activeEditorViews) {
+      try {
+        view.dispatch({
+          effects: refreshBracketRenderingEffect.of(bracketReferenceResolverVersion),
+          annotations: Transaction.addToHistory.of(false)
+        });
+      } catch (_) {
+      }
+    }
+  }
+  function normalizeHeadingReferenceName(value) {
+    return slugifyHeadingId(value);
+  }
+  function buildHeadingReferenceIndexFromText(source) {
+    const byName = /* @__PURE__ */ new Map();
+    const slugCounts = /* @__PURE__ */ new Map();
+    const lines = String(source || "").split(/\r?\n/);
+    lines.forEach((line) => {
+      const match3 = String(line || "").match(/^\s{0,3}(#{1,6})\s+(.+?)\s*#*\s*$/);
+      if (!match3) return;
+      const headingText = String(match3[2] || "").trim();
+      if (!headingText) return;
+      const baseSlug = slugifyHeadingId(headingText);
+      const seen = slugCounts.get(baseSlug) || 0;
+      const slug = seen > 0 ? `${baseSlug}-${seen}` : baseSlug;
+      slugCounts.set(baseSlug, seen + 1);
+      const key = normalizeHeadingReferenceName(headingText);
+      if (!key || byName.has(key)) return;
+      byName.set(key, {
+        kind: "heading",
+        headingRef: slug,
+        headingText
+      });
+    });
+    return byName;
+  }
+  function resolveHeadingReference(label, headingReferenceIndex) {
+    const key = normalizeHeadingReferenceName(label);
+    if (!key || !(headingReferenceIndex instanceof Map)) return null;
+    const match3 = headingReferenceIndex.get(key);
+    return normalizeBracketReferenceResult(match3, label);
   }
   function getCachedRenderedMarkdown(kind, raw3) {
     if (!shouldCacheRenderedMarkdown(kind, raw3)) return null;
@@ -65157,9 +65248,10 @@
       const src = state.src || "";
       const start2 = state.pos;
       if (src.charCodeAt(start2) !== 91) return false;
+      if (src.charCodeAt(start2 + 1) === 91) return false;
       if (start2 > 0) {
         const prev = src.charCodeAt(start2 - 1);
-        if (prev === 33 || prev === 92) return false;
+        if (prev === 33 || prev === 92 || prev === 91) return false;
       }
       let end2 = start2 + 1;
       while (end2 < src.length) {
@@ -65171,23 +65263,85 @@
       if (end2 >= src.length || src.charCodeAt(end2) !== 93) return false;
       if (end2 + 1 < src.length) {
         const nextChar2 = src.charCodeAt(end2 + 1);
-        if (nextChar2 === 40 || nextChar2 === 91 || nextChar2 === 58) return false;
+        if (nextChar2 === 40 || nextChar2 === 91 || nextChar2 === 58 || nextChar2 === 93) return false;
       }
       const rawLabel = src.slice(start2 + 1, end2);
       const label = rawLabel.trim();
       if (!label) return false;
       if (/^[xX ]$/.test(label)) return false;
+      const resolved = resolveBracketReference(label);
+      if (!resolved) return false;
       if (silent) return true;
       const open = state.push("link_open", "a", 1);
-      open.attrSet("href", `${NOTE_REFERENCE_SCHEME}${encodeURIComponent(label)}`);
-      open.attrSet("class", "note-ref-link");
-      open.attrSet("data-note-ref", label);
+      open.attrSet("href", resolved.href);
+      open.attrSet(
+        "class",
+        resolved.kind === "note" ? "bracket-link note-ref-link" : "bracket-link external-bracket-link"
+      );
+      if (resolved.kind === "note") open.attrSet("data-note-ref", resolved.noteRef);
       const text6 = state.push("text", "", 0);
       text6.content = rawLabel;
       state.push("link_close", "a", -1);
       state.pos = end2 + 1;
       return true;
     });
+  }
+  function installHeadingReferenceSyntax(md) {
+    if (!md || !md.inline || !md.inline.ruler) return;
+    md.inline.ruler.before("note_reference_link", "heading_reference_link", (state, silent) => {
+      const src = state.src || "";
+      const start2 = state.pos;
+      if (src.charCodeAt(start2) !== 91 || src.charCodeAt(start2 + 1) !== 91) return false;
+      if (start2 > 0) {
+        const prev = src.charCodeAt(start2 - 1);
+        if (prev === 33 || prev === 92) return false;
+      }
+      let end2 = start2 + 2;
+      while (end2 < src.length - 1) {
+        const code3 = src.charCodeAt(end2);
+        if (code3 === 10) return false;
+        if (code3 === 93 && src.charCodeAt(end2 + 1) === 93) break;
+        end2 += 1;
+      }
+      if (end2 >= src.length - 1) return false;
+      const rawLabel = src.slice(start2 + 2, end2);
+      const label = rawLabel.trim();
+      if (!label) return false;
+      const headingReferenceIndex = state.env && state.env.headingReferenceIndex instanceof Map ? state.env.headingReferenceIndex : null;
+      const resolved = resolveHeadingReference(label, headingReferenceIndex);
+      if (!resolved) return false;
+      if (silent) return true;
+      const open = state.push("link_open", "a", 1);
+      open.attrSet("href", resolved.href);
+      open.attrSet("class", "bracket-link heading-bracket-link");
+      open.attrSet("data-heading-ref", resolved.headingRef);
+      const text6 = state.push("text", "", 0);
+      text6.content = rawLabel;
+      state.push("link_close", "a", -1);
+      state.pos = end2 + 2;
+      return true;
+    });
+  }
+  function installHtmlRenderSafeguards(md) {
+    if (!md || !md.renderer || !md.renderer.rules) return;
+    const defaultHtmlBlock = md.renderer.rules.html_block;
+    const defaultHtmlInline = md.renderer.rules.html_inline;
+    md.renderer.rules.html_block = (tokens2, idx, options, env, self) => {
+      const raw3 = String(tokens2[idx] && tokens2[idx].content || "");
+      if (isImportedImageHtml(raw3)) {
+        if (typeof defaultHtmlBlock === "function") return defaultHtmlBlock(tokens2, idx, options, env, self);
+        return raw3;
+      }
+      return `<div class="md-raw-html-block">${escapeHtml2(raw3).replace(/\n/g, "<br>")}</div>`;
+    };
+    md.renderer.rules.html_inline = (tokens2, idx, options, env, self) => {
+      const raw3 = String(tokens2[idx] && tokens2[idx].content || "");
+      if (isImportedImageHtml(raw3)) {
+        if (typeof defaultHtmlInline === "function") return defaultHtmlInline(tokens2, idx, options, env, self);
+        return raw3;
+      }
+      return escapeHtml2(raw3);
+    };
   }
   function installHighlightSyntax(md) {
     if (!md || !md.inline || !md.inline.ruler) return;
@@ -65265,8 +65419,10 @@
     const taskLists = typeof import_markdown_it_task_lists.default === "function" ? import_markdown_it_task_lists.default : import_markdown_it_task_lists.default && typeof import_markdown_it_task_lists.default.default === "function" && import_markdown_it_task_lists.default.default;
     if (taskLists) md.use(taskLists, { label: true, labelAfter: true });
     installNoteReferenceSyntax(md);
+    installHeadingReferenceSyntax(md);
     installHighlightSyntax(md);
     installHeadingIds(md);
+    installHtmlRenderSafeguards(md);
     cachedMd = md;
     return md;
   }
@@ -66533,12 +66689,13 @@
   function renderMarkdown(raw3, options = {}) {
     const kind = String(options && options.kind ? options.kind : "").toLowerCase();
     if (kind === "html") {
-      return String(raw3 || "").trim();
+      return isImportedImageHtml(raw3) ? String(raw3 || "").trim() : `<div class="md-raw-html-block">${escapeHtml2(raw3 || "").replace(/\n/g, "<br>")}</div>`;
     }
     const cached = getCachedRenderedMarkdown(kind, raw3);
     if (typeof cached === "string") return cached;
     const md = getMd();
-    let html2 = md ? md.render(raw3 || "") : escapeHtml2(raw3 || "");
+    const headingReferenceIndex = buildHeadingReferenceIndexFromText(raw3 || "");
+    let html2 = md ? md.render(raw3 || "", { headingReferenceIndex }) : escapeHtml2(raw3 || "");
     html2 = renderKatexInHtml(html2);
     return setCachedRenderedMarkdown(kind, raw3, html2);
   }
@@ -66802,22 +66959,27 @@
       return span;
     }
   };
-  var NoteReferenceWidget = class extends WidgetType {
-    constructor(label) {
+  var BracketReferenceWidget = class extends WidgetType {
+    constructor(label, resolved) {
       super();
       this.label = String(label || "");
+      this.resolved = normalizeBracketReferenceResult(resolved, this.label);
     }
     eq(other) {
-      return other && other.label === this.label;
+      return other && other.label === this.label && (other.resolved && other.resolved.kind || "") === (this.resolved && this.resolved.kind || "") && (other.resolved && other.resolved.href || "") === (this.resolved && this.resolved.href || "") && (other.resolved && other.resolved.noteRef || "") === (this.resolved && this.resolved.noteRef || "") && (other.resolved && other.resolved.headingRef || "") === (this.resolved && this.resolved.headingRef || "");
     }
     toDOM() {
       const safeLabel = String(this.label || "");
-      const decodedLabel = safeLabel.trim() || safeLabel;
+      const resolved = this.resolved || resolveBracketReference(safeLabel.trim() || safeLabel);
       const anchor = document.createElement("a");
-      anchor.className = "note-ref-link cm-note-ref-widget";
-      anchor.setAttribute("href", `${NOTE_REFERENCE_SCHEME}${encodeURIComponent(decodedLabel)}`);
-      anchor.setAttribute("data-note-ref", decodedLabel);
-      anchor.setAttribute("data-custom-title", "");
+      anchor.className = `${BRACKET_LINK_WIDGET_CLASS} bracket-link ${resolved && resolved.kind === "note" ? "note-ref-link" : resolved && resolved.kind === "heading" ? "heading-bracket-link" : "external-bracket-link"}`;
+      anchor.setAttribute("href", resolved && resolved.href ? resolved.href : "#");
+      if (resolved && resolved.kind === "note" && resolved.noteRef) {
+        anchor.setAttribute("data-note-ref", resolved.noteRef);
+        anchor.setAttribute("data-custom-title", "");
+      } else if (resolved && resolved.kind === "heading" && resolved.headingRef) {
+        anchor.setAttribute("data-heading-ref", resolved.headingRef);
+      }
       anchor.textContent = safeLabel;
       return anchor;
     }
@@ -67049,24 +67211,30 @@
         if (selfClosing) {
           const to = lineToEnd(line);
           const raw3 = state.doc.sliceString(from3, to, "\n");
-          blocks.push({ from: from3, to, kind: isImportedImageHtml(raw3) ? "image" : "html", raw: raw3 });
-          line += 1;
-          continue;
+          if (isImportedImageHtml(raw3)) {
+            blocks.push({ from: from3, to, kind: "image", raw: raw3 });
+            line += 1;
+            continue;
+          }
         }
         if (htmlComment.test(trimmed) || htmlDocType.test(trimmed) || htmlProcessingInstruction.test(trimmed)) {
           const to = lineToEnd(line);
           const raw3 = state.doc.sliceString(from3, to, "\n");
-          blocks.push({ from: from3, to, kind: isImportedImageHtml(raw3) ? "image" : "html", raw: raw3 });
-          line += 1;
-          continue;
+          if (isImportedImageHtml(raw3)) {
+            blocks.push({ from: from3, to, kind: "image", raw: raw3 });
+            line += 1;
+            continue;
+          }
         }
         const inlineClosed = trimmed.match(htmlTagInlineClosed);
         if (inlineClosed) {
           const to = lineToEnd(line);
           const raw3 = state.doc.sliceString(from3, to, "\n");
-          blocks.push({ from: from3, to, kind: isImportedImageHtml(raw3) ? "image" : "html", raw: raw3 });
-          line += 1;
-          continue;
+          if (isImportedImageHtml(raw3)) {
+            blocks.push({ from: from3, to, kind: "image", raw: raw3 });
+            line += 1;
+            continue;
+          }
         }
         const opening3 = trimmed.match(htmlTagStart);
         if (opening3) {
@@ -67074,9 +67242,11 @@
           if (htmlVoidTags.has(tag2)) {
             const to2 = lineToEnd(line);
             const raw4 = state.doc.sliceString(from3, to2, "\n");
-            blocks.push({ from: from3, to: to2, kind: isImportedImageHtml(raw4) ? "image" : "html", raw: raw4 });
-            line += 1;
-            continue;
+            if (isImportedImageHtml(raw4)) {
+              blocks.push({ from: from3, to: to2, kind: "image", raw: raw4 });
+              line += 1;
+              continue;
+            }
           }
           let end2 = line;
           let depth = 0;
@@ -67096,10 +67266,11 @@
           }
           const to = lineToEnd(end2);
           const raw3 = state.doc.sliceString(from3, to, "\n");
-          const isImportedImage = isImportedImageHtml(raw3);
-          blocks.push({ from: from3, to, kind: isImportedImage ? "image" : "html", raw: raw3 });
-          line = end2 + 1;
-          continue;
+          if (isImportedImageHtml(raw3)) {
+            blocks.push({ from: from3, to, kind: "image", raw: raw3 });
+            line = end2 + 1;
+            continue;
+          }
         }
       }
       if (/^\s*!\[[^\]]*\]\([^)]+\)\s*$/.test(text6)) {
@@ -67269,7 +67440,8 @@
         };
       },
       update(value, tr) {
-        const entries = tr.docChanged ? buildRenderableBlockEntries(tr.state, options) : value && Array.isArray(value.entries) ? value.entries : [];
+        const shouldRefresh = tr.docChanged || tr.effects.some((effect) => effect.is(refreshBracketRenderingEffect));
+        const entries = shouldRefresh ? buildRenderableBlockEntries(tr.state, options) : value && Array.isArray(value.entries) ? value.entries : [];
         return {
           entries,
           decorations: buildBlockDecorationsFromEntries(tr.state, entries)
@@ -67795,7 +67967,7 @@
     if (!targetEl) return null;
     const anchor = targetEl.closest("a[href]");
     if (!anchor) return null;
-    if (anchor.classList.contains("note-ref-link")) return anchor;
+    if (anchor.classList.contains(BRACKET_LINK_WIDGET_CLASS) || anchor.classList.contains("note-ref-link")) return anchor;
     if (!anchor.closest(".cm-block-render")) return null;
     return anchor;
   }
@@ -68003,6 +68175,7 @@
     const ranges = [];
     const { state } = view;
     const visible = view.visibleRanges || [{ from: 0, to: state.doc.length }];
+    const headingReferenceIndex = buildHeadingReferenceIndexFromText(state.doc.toString());
     const activeLine = state.doc.lineAt(state.selection.main.head);
     const selectionRanges = getNonEmptySelectionRanges(state);
     const hide = (from3, to) => {
@@ -68020,6 +68193,7 @@
     const strikeRe = /~~(?=\S)([\s\S]*?)(?<=\S)~~/g;
     const highlightRe = /==(?=\S)([\s\S]*?)(?<=\S)==/g;
     const codeSpanRe = /`([^`]+?)`/g;
+    const headingRefRe = /\[\[([^\]\n]+)\]\]/g;
     const noteRefRe = /\[([^\]\n]+)\]/g;
     const hrRe = /^\s*(?:-{3,}|\*{3,}|_{3,})\s*$/;
     const unorderedListRe = /^(\s*)([-+*])(\s+)/;
@@ -68126,6 +68300,33 @@
             }
           }
         }
+        headingRefRe.lastIndex = 0;
+        let headingMatch;
+        while ((headingMatch = headingRefRe.exec(text6)) !== null) {
+          if (isRevealedLine) continue;
+          const raw3 = String(headingMatch[0] || "");
+          if (!raw3 || raw3.length < 3) continue;
+          const labelRaw = String(headingMatch[1] || "");
+          const label = labelRaw.trim();
+          if (!label) continue;
+          const resolved = resolveHeadingReference(label, headingReferenceIndex);
+          if (!resolved) continue;
+          const localStart = headingMatch.index;
+          const localEnd = localStart + raw3.length;
+          const prevChar2 = localStart > 0 ? text6.charAt(localStart - 1) : "";
+          const nextChar2 = localEnd < text6.length ? text6.charAt(localEnd) : "";
+          if (prevChar2 === "!" || prevChar2 === "\\") continue;
+          if (overlapsCodeSpan(localStart, localEnd)) continue;
+          if (overlapsInlineMath(base7 + localStart, base7 + localEnd)) continue;
+          const start2 = base7 + localStart;
+          const end2 = base7 + localEnd;
+          ranges.push(
+            Decoration.replace({
+              widget: new BracketReferenceWidget(labelRaw, resolved),
+              inclusive: false
+            }).range(start2, end2)
+          );
+        }
         noteRefRe.lastIndex = 0;
         let noteMatch;
         while ((noteMatch = noteRefRe.exec(text6)) !== null) {
@@ -68136,19 +68337,21 @@
           const label = labelRaw.trim();
           if (!label) continue;
           if (/^[xX ]$/.test(label)) continue;
+          const resolved = resolveBracketReference(label);
+          if (!resolved) continue;
           const localStart = noteMatch.index;
           const localEnd = localStart + raw3.length;
           const prevChar2 = localStart > 0 ? text6.charAt(localStart - 1) : "";
           const nextChar2 = localEnd < text6.length ? text6.charAt(localEnd) : "";
-          if (prevChar2 === "!" || prevChar2 === "\\") continue;
-          if (nextChar2 === "(" || nextChar2 === "[" || nextChar2 === ":") continue;
+          if (prevChar2 === "!" || prevChar2 === "\\" || prevChar2 === "[") continue;
+          if (nextChar2 === "(" || nextChar2 === "[" || nextChar2 === ":" || nextChar2 === "]") continue;
           if (overlapsCodeSpan(localStart, localEnd)) continue;
           if (overlapsInlineMath(base7 + localStart, base7 + localEnd)) continue;
           const start2 = base7 + localStart;
           const end2 = base7 + localEnd;
           ranges.push(
             Decoration.replace({
-              widget: new NoteReferenceWidget(labelRaw),
+              widget: new BracketReferenceWidget(labelRaw, resolved),
               inclusive: false
             }).range(start2, end2)
           );
@@ -68230,7 +68433,8 @@
         }
       }
       update(u2) {
-        if (u2.docChanged || u2.viewportChanged || u2.selectionSet || u2.focusChanged) {
+        const shouldRefresh = u2.transactions.some((tr) => tr.effects.some((effect) => effect.is(refreshBracketRenderingEffect)));
+        if (u2.docChanged || u2.viewportChanged || u2.selectionSet || u2.focusChanged || shouldRefresh) {
           try {
             this.decorations = buildInlineDecorations(u2.view);
           } catch (e) {
@@ -68254,7 +68458,7 @@
     { tag: tags.strong, fontWeight: "700" },
     { tag: tags.emphasis, fontStyle: "italic" },
     { tag: tags.strikethrough, textDecoration: "line-through" },
-    { tag: tags.link, color: "#3b7bda", textDecoration: "underline" },
+    { tag: tags.link, color: "var(--link-color)", textDecoration: "underline" },
     { tag: tags.quote, color: "var(--text-sub)" },
     { tag: tags.monospace, fontFamily: "ui-monospace, SFMono-Regular, Menlo, Consolas, monospace", fontSize: "0.92em" },
     { tag: tags.comment, color: "#6e7781", fontStyle: "italic" },
@@ -69244,6 +69448,7 @@ ${newRow}`;
     view.dom.__cmView = view;
     view.scrollDOM.__cmView = view;
     parent.__cmView = view;
+    activeEditorViews.add(view);
     const handleParentTabKeyDown = (event) => {
       if (!event || event.key !== "Tab" || shouldBypassEditorTabOverride(event)) return;
       const handled = handleEditorTabKey(view, event.shiftKey);
@@ -69365,6 +69570,7 @@ ${newRow}`;
         clearPendingBackgroundPointer(view);
         stopBackgroundPointerDocumentTracking();
         setBackgroundPointerHooks(view, null);
+        activeEditorViews.delete(view);
         view.destroy();
       },
       getDoc() {
@@ -69439,12 +69645,33 @@ ${newRow}`;
         const m = view.state.selection.main;
         return { from: m.from, to: m.to, anchor: m.anchor, head: m.head, empty: m.empty };
       },
-      scrollToPos(pos) {
+      scrollToPos(pos, options = {}) {
         const len = view.state.doc.length;
         const safe = clamp(len, pos, 0);
+        const smooth = Boolean(options && options.smooth);
+        const yMargin = Number.isFinite(options && options.yMargin) ? Math.max(0, options.yMargin) : 56;
+        if (smooth && view.scrollDOM && typeof view.coordsAtPos === "function") {
+          try {
+            const coords = view.coordsAtPos(safe);
+            const scrollerRect = view.scrollDOM.getBoundingClientRect();
+            if (coords && Number.isFinite(coords.top) && Number.isFinite(scrollerRect.top)) {
+              const targetTop = Math.max(
+                0,
+                view.scrollDOM.scrollTop + coords.top - scrollerRect.top - yMargin
+              );
+              if (typeof view.scrollDOM.scrollTo === "function") {
+                view.scrollDOM.scrollTo({ top: targetTop, behavior: "smooth" });
+                return;
+              }
+              view.scrollDOM.scrollTop = targetTop;
+              return;
+            }
+          } catch (_) {
+          }
+        }
         try {
           view.dispatch({
-            effects: EditorView.scrollIntoView(safe, { y: "start", yMargin: 56 })
+            effects: EditorView.scrollIntoView(safe, { y: "start", yMargin })
           });
         } catch (_) {
         }
@@ -69453,12 +69680,19 @@ ${newRow}`;
         const len = view.state.doc.length;
         const safe = clamp(len, pos, len);
         return view.coordsAtPos(safe);
+      },
+      refreshBracketLinks() {
+        view.dispatch({
+          effects: refreshBracketRenderingEffect.of(bracketReferenceResolverVersion),
+          annotations: Transaction.addToHistory.of(false)
+        });
       }
     };
     return api;
   }
   window.NotoCodeMirror = {
     createEditor,
-    renderMarkdownToHtml: renderMarkdown
+    renderMarkdownToHtml: renderMarkdown,
+    setBracketReferenceResolver
   };
 })();

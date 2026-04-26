@@ -54,14 +54,15 @@
   --danger-fg-hover: #a93d3d;
   --danger-bg-hover: #ffdfdf;
   --danger-border-hover: #dc9797;
-  --presentation-live-fg: #8f1f3f;
-  --presentation-live-bg: rgba(255, 239, 244, 0.95);
-  --presentation-live-border: rgba(238, 141, 169, 0.4);
-  --presentation-live-dot: #ff5f92;
-  --presentation-live-frozen-fg: #7a3a53;
-  --presentation-live-frozen-bg: rgba(253, 243, 247, 0.96);
-  --presentation-live-frozen-border: rgba(223, 163, 184, 0.36);
-  --presentation-live-frozen-dot: #d99ab3;
+  --presentation-live-fg: #b44545;
+  --presentation-live-bg: rgba(255, 232, 232, 0.95);
+  --presentation-live-border: rgba(228, 170, 170, 0.42);
+  --presentation-live-dot: #b44545;
+  --presentation-live-pulse: rgba(180, 69, 69, 0.34);
+  --presentation-live-frozen-fg: #a93d3d;
+  --presentation-live-frozen-bg: rgba(255, 223, 223, 0.96);
+  --presentation-live-frozen-border: rgba(220, 151, 151, 0.36);
+  --presentation-live-frozen-dot: #a93d3d;
   --presentation-live-action-hover: rgba(0, 0, 0, 0.06);
   --presentation-live-action-active: rgba(0, 0, 0, 0.1);
   --diff-added-bg: #eaf6ea;
@@ -121,7 +122,7 @@
   --popup-panel-shadow: 0 20px 46px rgba(0, 0, 0, 0.56);
   --surface-muted: #191919;
   --surface-soft: #141414;
-  --link-color: #f1f1f1;
+  --link-color: #68a8ff;
   --inline-code-bg: rgba(255, 255, 255, 0.22);
   --inline-code-bg-soft: rgba(255, 255, 255, 0.18);
   --code-bg: #1c1c1c;
@@ -162,14 +163,15 @@
   --syntax-del-fg: #ffd4d4;
   --syntax-del-bg: #38181c;
   --loading-mark-color: #ffffff;
-  --presentation-live-fg: #ffbfd1;
-  --presentation-live-bg: rgba(64, 24, 38, 0.92);
-  --presentation-live-border: rgba(255, 146, 184, 0.34);
-  --presentation-live-dot: #ff79a9;
-  --presentation-live-frozen-fg: #e8c2cf;
-  --presentation-live-frozen-bg: rgba(52, 33, 42, 0.92);
-  --presentation-live-frozen-border: rgba(188, 151, 166, 0.34);
-  --presentation-live-frozen-dot: #c895ab;
+  --presentation-live-fg: #ffb0b0;
+  --presentation-live-bg: rgba(58, 31, 34, 0.92);
+  --presentation-live-border: rgba(125, 74, 74, 0.34);
+  --presentation-live-dot: #ffb0b0;
+  --presentation-live-pulse: rgba(255, 176, 176, 0.32);
+  --presentation-live-frozen-fg: #ffd1d1;
+  --presentation-live-frozen-bg: rgba(74, 37, 42, 0.92);
+  --presentation-live-frozen-border: rgba(154, 89, 89, 0.34);
+  --presentation-live-frozen-dot: #ffd1d1;
   --presentation-live-action-hover: rgba(255, 255, 255, 0.08);
   --presentation-live-action-active: rgba(255, 255, 255, 0.14);
   color-scheme: dark;
@@ -1552,7 +1554,7 @@ body:not(.presentation-mode) .pane-header {
   width: 8px;
   height: 8px;
   --presentation-dot-pulse-scale: 1.25;
-  background: #ff5f92;
+  background: var(--presentation-live-dot);
   box-shadow: none;
   isolation: isolate;
   overflow: visible;
@@ -1563,7 +1565,7 @@ body:not(.presentation-mode) .pane-header {
   position: absolute;
   inset: 0;
   border-radius: inherit;
-  background: rgba(255, 95, 146, 0.6);
+  background: var(--presentation-live-pulse);
   animation: presentationDotPulse 1.7s ease-out infinite;
   z-index: -1;
 }
@@ -3660,6 +3662,10 @@ body.tab-dragging-active * {
 .live-markdown-editor.cm-host .cm-block-render li {
   white-space: pre-wrap;
 }
+.live-markdown-editor.cm-host .cm-block-render .md-raw-html-block {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
 .live-markdown-editor.cm-host .cm-block-render > :last-child {
   margin-bottom: 0 !important;
 }
@@ -3670,9 +3676,10 @@ body.tab-dragging-active * {
   color: var(--link-color);
   text-decoration: underline;
 }
-.live-markdown-editor.cm-host .cm-block-render a.note-ref-link,
+.live-markdown-editor.cm-host .cm-block-render a.bracket-link,
+.live-markdown-editor.cm-host a.cm-bracket-link-widget,
 .live-markdown-editor.cm-host a.cm-note-ref-widget,
-.md-view a.note-ref-link {
+.md-view a.bracket-link {
   color: var(--link-color);
   text-decoration: underline;
   text-decoration-thickness: 1px;
@@ -3680,12 +3687,27 @@ body.tab-dragging-active * {
   cursor: pointer;
   display: inline;
 }
-.live-markdown-editor.cm-host a.cm-note-ref-widget {
-  white-space: nowrap;
+
+/* Force bracket-link descendants (text nodes) to inherit link color when rendered inline */
+.live-markdown-editor.cm-host .cm-block-render a.bracket-link *,
+.live-markdown-editor.cm-host a.cm-bracket-link-widget *,
+.live-markdown-editor.cm-host a.cm-note-ref-widget *,
+.md-view a.bracket-link * {
+  color: inherit !important;
 }
-.live-markdown-editor.cm-host .cm-block-render a.note-ref-link::after,
-.live-markdown-editor.cm-host a.cm-note-ref-widget::after,
-.md-view a.note-ref-link::after {
+
+/* Inline mark for bracket links while editing (caret inside) */
+.live-markdown-editor.cm-host .cm-line .cm-bracket-link-inline,
+.live-markdown-editor.cm-host .cm-line .bracket-link {
+  color: var(--link-color);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
+  cursor: pointer;
+  display: inline;
+}
+.live-markdown-editor.cm-host .cm-line .cm-bracket-link-inline::after,
+.live-markdown-editor.cm-host .cm-line .bracket-link::after {
   content: "\2197";
   font-size: 1em;
   line-height: inherit;
@@ -3694,12 +3716,36 @@ body.tab-dragging-active * {
   transition: opacity 110ms ease;
   pointer-events: none;
 }
-.live-markdown-editor.cm-host .cm-block-render a.note-ref-link:hover::after,
-.live-markdown-editor.cm-host .cm-block-render a.note-ref-link:focus-visible::after,
+.live-markdown-editor.cm-host .cm-line .cm-bracket-link-inline:hover::after,
+.live-markdown-editor.cm-host .cm-line .cm-bracket-link-inline:focus-visible::after,
+.live-markdown-editor.cm-host .cm-line .bracket-link:hover::after,
+.live-markdown-editor.cm-host .cm-line .bracket-link:focus-visible::after {
+  opacity: 1;
+}
+.live-markdown-editor.cm-host a.cm-bracket-link-widget,
+.live-markdown-editor.cm-host a.cm-note-ref-widget {
+  white-space: nowrap;
+}
+.live-markdown-editor.cm-host .cm-block-render a.bracket-link::after,
+.live-markdown-editor.cm-host a.cm-bracket-link-widget::after,
+.live-markdown-editor.cm-host a.cm-note-ref-widget::after,
+.md-view a.bracket-link::after {
+  content: "\2197";
+  font-size: 1em;
+  line-height: inherit;
+  text-decoration: none;
+  opacity: 0;
+  transition: opacity 110ms ease;
+  pointer-events: none;
+}
+.live-markdown-editor.cm-host .cm-block-render a.bracket-link:hover::after,
+.live-markdown-editor.cm-host .cm-block-render a.bracket-link:focus-visible::after,
+.live-markdown-editor.cm-host a.cm-bracket-link-widget:hover::after,
+.live-markdown-editor.cm-host a.cm-bracket-link-widget:focus-visible::after,
 .live-markdown-editor.cm-host a.cm-note-ref-widget:hover::after,
 .live-markdown-editor.cm-host a.cm-note-ref-widget:focus-visible::after,
-.md-view a.note-ref-link:hover::after,
-.md-view a.note-ref-link:focus-visible::after {
+.md-view a.bracket-link:hover::after,
+.md-view a.bracket-link:focus-visible::after {
   opacity: 1;
 }
 .live-markdown-editor.cm-host .cm-note-ref-inline {
@@ -4369,7 +4415,7 @@ body.is-import-image-resizing * {
   position: absolute;
   inset: 0;
   border-radius: inherit;
-  background: rgba(255, 95, 146, 0.6);
+  background: var(--presentation-live-pulse);
   animation: presentationDotPulse 1.7s ease-out infinite;
   z-index: -1;
 }

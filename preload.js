@@ -29,6 +29,13 @@ contextBridge.exposeInMainWorld('api', {
   updatePresentation: (content) => ipcRenderer.send('update-presentation', content),
   updatePresentationScroll: (payload) => ipcRenderer.send('update-presentation-scroll', payload),
   setPresentationFrozen: (payload) => ipcRenderer.send('set-presentation-frozen', payload)
+  ,
+  onAutoUpdateState: (callback) => {
+    if (typeof callback !== 'function') return () => {};
+    const handler = (_event, payload) => callback(payload);
+    ipcRenderer.on('auto-update-state', handler);
+    return () => ipcRenderer.removeListener('auto-update-state', handler);
+  }
 });
 
 contextBridge.exposeInMainWorld('electronAPI', {

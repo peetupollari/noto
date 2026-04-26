@@ -656,6 +656,14 @@ function setAutoUpdateState(partial = {}) {
   if (!autoUpdateState.message) {
     autoUpdateState.message = getAutoUpdateSupportMessage();
   }
+  // Broadcast the latest auto-update snapshot to renderer windows so UI can update live
+  try {
+    if (mainWindow && mainWindow.webContents && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('auto-update-state', getAutoUpdateStatusSnapshot());
+    }
+  } catch (err) {
+    // swallow
+  }
 }
 
 function getAutoUpdateStatusSnapshot() {
