@@ -2240,16 +2240,7 @@ class BracketReferenceWidget extends WidgetType {
     } else if (resolved && resolved.kind === "heading" && resolved.headingRef) {
       anchor.setAttribute("data-heading-ref", resolved.headingRef);
     }
-    // Render the surrounding brackets as part of the anchor so the whole link (including brackets)
-    // receives the link styling in the editor.
-    let displayText = safeLabel;
-    try {
-      if (this.resolved && this.resolved.kind === "heading") displayText = `[[${safeLabel}]]`;
-      else if (this.resolved && this.resolved.kind === "note") displayText = `[${safeLabel}]`;
-    } catch (err) {
-      displayText = safeLabel;
-    }
-    anchor.textContent = displayText;
+    anchor.textContent = safeLabel;
     return anchor;
   }
   ignoreEvent() {
@@ -5316,4 +5307,3 @@ window.NotoCodeMirror = {
   renderMarkdownToHtml: renderMarkdown,
   setBracketReferenceResolver
 };
-

@@ -6236,6 +6236,10 @@ body.sidebar-ui-disabled .sidebar-seam-toggle {
   justify-content: flex-end;
   max-width: 50%;
 }
+.settings-shell-row.is-rich .settings-shell-row-right,
+.settings-update-status {
+  width: min(100%, 340px);
+}
 .settings-shell-row.is-rich .settings-shell-row-right {
   max-width: 72%;
 }
@@ -6248,6 +6252,34 @@ body.sidebar-ui-disabled .sidebar-seam-toggle {
 }
 .settings-shell-progress-wrap {
   margin-top: 1px;
+}
+.settings-shell-progress-wrap.is-compact {
+  margin-top: 6px;
+}
+.settings-update-status {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+.settings-update-status-message,
+.settings-update-status-detail {
+  font-size: 12px;
+  text-align: right;
+  word-break: break-word;
+}
+.settings-update-status-message {
+  font-weight: 600;
+  color: var(--text);
+}
+.settings-update-status-detail {
+  color: var(--text-sub);
+}
+.settings-update-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
 }
 .settings-shell-row-right .btn-primary,
 .settings-shell-row-right .btn-secondary,

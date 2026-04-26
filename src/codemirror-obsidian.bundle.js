@@ -68303,7 +68303,6 @@
         headingRefRe.lastIndex = 0;
         let headingMatch;
         while ((headingMatch = headingRefRe.exec(text6)) !== null) {
-          if (isRevealedLine) continue;
           const raw3 = String(headingMatch[0] || "");
           if (!raw3 || raw3.length < 3) continue;
           const labelRaw = String(headingMatch[1] || "");
@@ -68320,6 +68319,12 @@
           if (overlapsInlineMath(base7 + localStart, base7 + localEnd)) continue;
           const start2 = base7 + localStart;
           const end2 = base7 + localEnd;
+          if (isRevealedLine) {
+            ranges.push(
+              Decoration.mark({ class: "cm-bracket-link-inline" }).range(start2, end2)
+            );
+            continue;
+          }
           ranges.push(
             Decoration.replace({
               widget: new BracketReferenceWidget(labelRaw, resolved),
@@ -68330,7 +68335,6 @@
         noteRefRe.lastIndex = 0;
         let noteMatch;
         while ((noteMatch = noteRefRe.exec(text6)) !== null) {
-          if (isRevealedLine) continue;
           const raw3 = String(noteMatch[0] || "");
           if (!raw3 || raw3.length < 3) continue;
           const labelRaw = String(noteMatch[1] || "");
@@ -68349,6 +68353,12 @@
           if (overlapsInlineMath(base7 + localStart, base7 + localEnd)) continue;
           const start2 = base7 + localStart;
           const end2 = base7 + localEnd;
+          if (isRevealedLine) {
+            ranges.push(
+              Decoration.mark({ class: "cm-bracket-link-inline" }).range(start2, end2)
+            );
+            continue;
+          }
           ranges.push(
             Decoration.replace({
               widget: new BracketReferenceWidget(labelRaw, resolved),

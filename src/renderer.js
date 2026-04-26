@@ -1818,42 +1818,65 @@
       }
       return -1;
     };
+    const smoothScrollTargetIntoView = (targetEl, options = {}) => {
+      if (!(targetEl instanceof Element)) return false;
+      const margin = Number.isFinite(Number(options.yMargin)) ? Math.max(0, Number(options.yMargin)) : 56;
+      let scrollParent = targetEl.parentElement;
+      while (scrollParent && scrollParent !== document.body && scrollParent !== document.documentElement) {
+        const style = window.getComputedStyle(scrollParent);
+        const overflowY = `${style.overflowY || ''} ${style.overflow || ''}`;
+        if (/(auto|scroll|overlay)/i.test(overflowY) && scrollParent.scrollHeight > scrollParent.clientHeight) {
+          const parentRect = scrollParent.getBoundingClientRect();
+          const targetRect = targetEl.getBoundingClientRect();
+          const targetTop = Math.max(0, scrollParent.scrollTop + targetRect.top - parentRect.top - margin);
+          if (typeof scrollParent.scrollTo === 'function') {
+            scrollParent.scrollTo({ top: targetTop, behavior: 'smooth' });
+            return true;
+          }
+          scrollParent.scrollTop = targetTop;
+          return true;
+        }
+        scrollParent = scrollParent.parentElement;
+      }
+      if (typeof targetEl.scrollIntoView === 'function') {
+        targetEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        return true;
+      }
+      return false;
+    };
 
     const lookupScope = activePane && activePane.ui && activePane.ui.liveEditor
       ? activePane.ui.liveEditor
       : document;
+    const cmApi = activePane && activePane.live && activePane.live.cmApi;
     const byId = document.getElementById(id);
     const byName = lookupScope.querySelector(`[name="${escapeCssSelectorValue(id)}"]`)
       || document.querySelector(`[name="${escapeCssSelectorValue(id)}"]`);
     let target = byId || byName;
     const desiredSlug = slugifyHeadingTarget(id);
 
-    if (!target) {
-      if (desiredSlug) {
-        const cmApi = activePane && activePane.live && activePane.live.cmApi;
-        if (cmApi && typeof cmApi.getDoc === 'function' && typeof cmApi.scrollToPos === 'function') {
-          const offset = findMarkdownHeadingOffsetBySlug(cmApi.getDoc(), desiredSlug);
-          if (offset >= 0) {
-            cmApi.scrollToPos(offset, { smooth: true, yMargin: 56 });
-            return true;
-          }
-        }
+    if (desiredSlug && cmApi && typeof cmApi.getDoc === 'function' && typeof cmApi.scrollToPos === 'function') {
+      const offset = findMarkdownHeadingOffsetBySlug(cmApi.getDoc(), desiredSlug);
+      if (offset >= 0) {
+        cmApi.scrollToPos(offset, { smooth: true, yMargin: 56 });
+        return true;
+      }
+    }
 
-        const editorHeadings = Array.from(lookupScope.querySelectorAll('.cm-line.cm-md-heading'));
-        for (const line of editorHeadings) {
-          const rawText = String(line.textContent || '').replace(/\u200B/g, '').trim();
-          const headingText = rawText.replace(/^#{1,6}\s*/, '').trim();
-          if (slugifyHeadingTarget(headingText) === desiredSlug) {
-            target = line;
-            break;
-          }
+    if (!target && desiredSlug) {
+      const editorHeadings = Array.from(lookupScope.querySelectorAll('.cm-line.cm-md-heading'));
+      for (const line of editorHeadings) {
+        const rawText = String(line.textContent || '').replace(/\u200B/g, '').trim();
+        const headingText = rawText.replace(/^#{1,6}\s*/, '').trim();
+        if (slugifyHeadingTarget(headingText) === desiredSlug) {
+          target = line;
+          break;
         }
       }
     }
 
-    if (!target || typeof target.scrollIntoView !== 'function') return false;
-    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    return true;
+    if (!target) return false;
+    return smoothScrollTargetIntoView(target, { yMargin: 56 });
   }
 
   function isExternalHref(href) {
@@ -4607,7 +4630,11 @@
         showBetaBadge: false,
         canCheckForUpdates: false,
         updateStatus: '',
-        updateMessage: ''
+        updateMessage: '',
+        updateAvailableVersion: '',
+        updateDownloadedVersion: '',
+        updateProgressPercent: 0,
+        updateCheckedAt: ''
       },
       themeMode: appThemeMode,
       appSizeMode: appSizeMode,
@@ -4767,6 +4794,133 @@
       return row;
     }
 
+    function buildSettingsProgressBar(percent, options = {}) {
+      const wrap = document.createElement('div');
+      wrap.className = 'settings-shell-progress-wrap';
+      if (options.compact) wrap.classList.add('is-compact');
+      const bar = document.createElement('div');
+      bar.className = 'storage-usage-progress';
+      bar.setAttribute('role', 'progressbar');
+      bar.setAttribute('aria-valuemin', '0');
+      bar.setAttribute('aria-valuemax', '100');
+      const fill = document.createElement('div');
+      fill.className = 'storage-usage-progress-fill';
+      const safePercent = Number.isFinite(Number(percent)) ? Math.max(0, Math.min(100, Number(percent))) : 0;
+      fill.style.width = `${safePercent}%`;
+      bar.setAttribute('aria-valuenow', `${Math.round(safePercent)}`);
+      bar.appendChild(fill);
+      wrap.appendChild(bar);
+      return wrap;
+    }
+
+    function buildUpdateStatusNode() {
+      const wrap = document.createElement('div');
+      wrap.className = 'settings-update-status';
+      const message = document.createElement('div');
+      message.className = 'settings-update-status-message';
+      message.textContent = settingsState.releaseInfo.updateMessage || 'Automatic updates are not available in this build.';
+      wrap.appendChild(message);
+
+      const status = settingsState.releaseInfo.updateStatus;
+      if (status === 'downloading') {
+        wrap.appendChild(buildSettingsProgressBar(settingsState.releaseInfo.updateProgressPercent, { compact: true }));
+        const detail = document.createElement('div');
+        detail.className = 'settings-update-status-detail';
+        detail.textContent = `${Math.round(settingsState.releaseInfo.updateProgressPercent || 0)}%`;
+        wrap.appendChild(detail);
+      } else if (status === 'update-downloaded') {
+        const detail = document.createElement('div');
+        detail.className = 'settings-update-status-detail';
+        detail.textContent = settingsState.releaseInfo.updateDownloadedVersion
+          ? `Ready to install ${settingsState.releaseInfo.updateDownloadedVersion}.`
+          : 'Ready to install.';
+        wrap.appendChild(detail);
+      } else if (status === 'checking' && settingsState.releaseInfo.updateCheckedAt) {
+        const detail = document.createElement('div');
+        detail.className = 'settings-update-status-detail';
+        detail.textContent = 'Checking now...';
+        wrap.appendChild(detail);
+      } else if (settingsState.releaseInfo.updateAvailableVersion) {
+        const detail = document.createElement('div');
+        detail.className = 'settings-update-status-detail';
+        detail.textContent = `Latest found: ${settingsState.releaseInfo.updateAvailableVersion}`;
+        wrap.appendChild(detail);
+      }
+
+      return wrap;
+    }
+
+    function buildUpdateActionGroup() {
+      const wrap = document.createElement('div');
+      wrap.className = 'settings-update-actions';
+      const status = settingsState.releaseInfo.updateStatus;
+
+      const checkForUpdatesAction = document.createElement('button');
+      checkForUpdatesAction.type = 'button';
+      checkForUpdatesAction.className = 'btn-secondary';
+      setButtonTextWithIcon(checkForUpdatesAction, ICONS.REFRESH_CIRCLE, 'Check now');
+      checkForUpdatesAction.disabled = !settingsState.releaseInfo.canCheckForUpdates || status === 'checking' || status === 'downloading';
+      checkForUpdatesAction.onclick = async () => {
+        if (checkForUpdatesAction.disabled) return;
+        checkForUpdatesAction.disabled = true;
+        try {
+          if (!window.api || typeof window.api.checkForAppUpdate !== 'function') {
+            throw new Error('Update API unavailable.');
+          }
+          const result = await window.api.checkForAppUpdate();
+          await refreshAppReleaseInfo({ render: true });
+          const message = result && typeof result.message === 'string' && result.message.trim()
+            ? result.message.trim()
+            : (settingsState.releaseInfo.updateMessage || 'Update check finished.');
+          if (result && result.success) {
+            if (settingsState.releaseInfo.updateStatus === 'up-to-date') showToast(message, 'success');
+            else showToast(message, 'info');
+          } else {
+            showToast(message, 'warning');
+          }
+        } catch (error) {
+          showToast(error && error.message ? error.message : 'Failed to check for updates.', 'warning');
+        } finally {
+          if (settingsState.activeCategory === 'settings' && isModalStillVisible()) {
+            renderSettingsCategoryContent();
+          }
+        }
+      };
+      wrap.appendChild(checkForUpdatesAction);
+
+      if (status === 'update-downloaded') {
+        const installNowAction = document.createElement('button');
+        installNowAction.type = 'button';
+        installNowAction.className = 'btn-primary';
+        setButtonTextWithIcon(installNowAction, ICONS.REFRESH_CIRCLE, 'Install now');
+        installNowAction.onclick = async () => {
+          try {
+            if (!window.api || typeof window.api.installAppUpdateNow !== 'function') {
+              throw new Error('Install update API unavailable.');
+            }
+            const result = await window.api.installAppUpdateNow();
+            if (!result || !result.success) {
+              throw new Error((result && result.error) || 'Failed to start the update install.');
+            }
+          } catch (error) {
+            showToast(error && error.message ? error.message : 'Failed to start the update install.', 'warning');
+          }
+        };
+        wrap.appendChild(installNowAction);
+
+        const laterAction = document.createElement('button');
+        laterAction.type = 'button';
+        laterAction.className = 'btn-secondary';
+        laterAction.textContent = 'Later';
+        laterAction.onclick = () => {
+          showToast('Okay, the update will stay ready to install later.', 'info');
+        };
+        wrap.appendChild(laterAction);
+      }
+
+      return wrap;
+    }
+
     function setButtonTextWithIcon(button, iconSvg, labelText) {
       if (!(button instanceof HTMLElement)) return;
       const iconMarkup = typeof iconSvg === 'string' ? iconSvg : '';
@@ -4856,7 +5010,13 @@
               showBetaBadge: Boolean(result.showBetaBadge),
               canCheckForUpdates: Boolean(result.canCheckForUpdates),
               updateStatus: String(result.updateStatus || '').trim(),
-              updateMessage: String(result.updateMessage || '').trim()
+              updateMessage: String(result.updateMessage || '').trim(),
+              updateAvailableVersion: String(result.updateAvailableVersion || '').trim(),
+              updateDownloadedVersion: String(result.updateDownloadedVersion || '').trim(),
+              updateProgressPercent: Number.isFinite(Number(result.updateProgressPercent))
+                ? Math.max(0, Math.min(100, Number(result.updateProgressPercent)))
+                : 0,
+              updateCheckedAt: String(result.updateCheckedAt || '').trim()
             };
           }
         }
@@ -5338,47 +5498,22 @@
       appendRow(
         updatesSection.rows,
         'Update status',
-        buildValue(settingsState.releaseInfo.updateMessage || 'Automatic updates are not available in this build.'),
+        buildUpdateStatusNode(),
         settingsState.releaseInfo.canCheckForUpdates
           ? 'Noto checks automatically for new releases when installed from the Windows installer.'
-          : 'Install the packaged Windows app to enable automatic update checks.'
+          : 'Install the packaged Windows app to enable automatic update checks.',
+        'is-rich'
       );
-      const checkForUpdatesAction = document.createElement('button');
-      checkForUpdatesAction.type = 'button';
-      checkForUpdatesAction.className = 'btn-secondary';
-      setButtonTextWithIcon(checkForUpdatesAction, ICONS.REFRESH_CIRCLE, 'Check now');
-      checkForUpdatesAction.disabled = !settingsState.releaseInfo.canCheckForUpdates;
-      checkForUpdatesAction.onclick = async () => {
-        if (checkForUpdatesAction.disabled) return;
-        checkForUpdatesAction.disabled = true;
-        try {
-          if (!window.api || typeof window.api.checkForAppUpdate !== 'function') {
-            throw new Error('Update API unavailable.');
-          }
-          const result = await window.api.checkForAppUpdate();
-          await refreshAppReleaseInfo({ render: true });
-          const message = result && typeof result.message === 'string' && result.message.trim()
-            ? result.message.trim()
-            : (settingsState.releaseInfo.updateMessage || 'Update check finished.');
-          if (result && result.success) {
-            if (settingsState.releaseInfo.updateStatus === 'up-to-date') showToast(message, 'success');
-            else showToast(message, 'info');
-          } else {
-            showToast(message, 'warning');
-          }
-        } catch (error) {
-          showToast(error && error.message ? error.message : 'Failed to check for updates.', 'warning');
-        } finally {
-          checkForUpdatesAction.disabled = !settingsState.releaseInfo.canCheckForUpdates;
-        }
-      };
       appendRow(
         updatesSection.rows,
-        'Check for updates',
-        checkForUpdatesAction,
+        settingsState.releaseInfo.updateStatus === 'update-downloaded' ? 'Update actions' : 'Check for updates',
+        buildUpdateActionGroup(),
         settingsState.releaseInfo.canCheckForUpdates
-          ? 'Run an on-demand update check.'
-          : 'This button becomes available in the installed Windows build.'
+          ? (settingsState.releaseInfo.updateStatus === 'update-downloaded'
+            ? 'Install the downloaded update now or leave it for later.'
+            : 'Run an on-demand update check.')
+          : 'This button becomes available in the installed Windows build.',
+        'is-rich'
       );
       shellContent.appendChild(updatesSection.section);
 
@@ -5391,23 +5526,14 @@
         || `${formatUsedStorageKb(settingsState.cloudUsage.usedBytes)} / ${formatQuotaStorageKb(settingsState.cloudUsage.quotaBytes)}`;
       appendRow(storageSection.rows, 'Used storage', buildValue(usageLabel), 'Global quota is shared for all users.');
 
-      const progressWrap = document.createElement('div');
-      progressWrap.className = 'settings-shell-progress-wrap';
-      const progressBar = document.createElement('div');
-      progressBar.className = 'storage-usage-progress';
-      progressBar.setAttribute('role', 'progressbar');
-      progressBar.setAttribute('aria-valuemin', '0');
-      progressBar.setAttribute('aria-valuemax', '100');
-      const progressFill = document.createElement('div');
-      progressFill.className = 'storage-usage-progress-fill';
-      progressBar.appendChild(progressFill);
       const safeUsed = Math.max(0, Number(settingsState.cloudUsage.usedBytes) || 0);
       const safeQuota = Math.max(0, Number(settingsState.cloudUsage.quotaBytes) || 0);
       const percent = safeQuota > 0 ? Math.min(100, (safeUsed / safeQuota) * 100) : 0;
-      progressFill.style.width = `${percent}%`;
-      progressFill.classList.toggle('is-over-limit', safeQuota > 0 && safeUsed > safeQuota);
-      progressBar.setAttribute('aria-valuenow', `${Math.round(percent)}`);
-      progressWrap.appendChild(progressBar);
+      const progressWrap = buildSettingsProgressBar(percent);
+      const progressFill = progressWrap.querySelector('.storage-usage-progress-fill');
+      if (progressFill) {
+        progressFill.classList.toggle('is-over-limit', safeQuota > 0 && safeUsed > safeQuota);
+      }
       storageSection.section.appendChild(progressWrap);
       shellContent.appendChild(storageSection.section);
 

@@ -636,6 +636,7 @@ function readAppReleaseInfo() {
     updateMessage: autoUpdateSnapshot.message,
     updateAvailableVersion: autoUpdateSnapshot.availableVersion,
     updateDownloadedVersion: autoUpdateSnapshot.downloadedVersion,
+    updateProgressPercent: autoUpdateSnapshot.progressPercent,
     updateCheckedAt: autoUpdateSnapshot.lastCheckedAt
   };
 }
@@ -3927,6 +3928,44 @@ ipcMain.handle('check-for-app-update', async () => {
   return checkForAppUpdates();
 });
 
+ipcMain.handle('install-app-update-now', async () => {
+  if (!canUseAutoUpdates()) {
+    return {
+      success: false,
+      error: 'Automatic updates are not available in this build.'
+    };
+  }
+  if (autoUpdateState.status !== 'update-downloaded') {
+    return {
+      success: false,
+      error: 'There is no downloaded update ready to install yet.'
+    };
+  }
+  try {
+    isInstallingAppUpdate = true;
+    isExplicitQuitRequested = true;
+    quitGuardRequestInFlight = false;
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.__allowGuardedClose = true;
+    }
+    setAutoUpdateState({
+      status: 'installing',
+      message: autoUpdateState.downloadedVersion
+        ? `Installing Noto ${autoUpdateState.downloadedVersion}...`
+        : 'Installing update...'
+    });
+    setTimeout(() => {
+      autoUpdater.quitAndInstall();
+    }, 0);
+    return { success: true };
+  } catch (error) {
+    return {
+      success: false,
+      error: error && error.message ? String(error.message) : 'Failed to start update installation.'
+    };
+  }
+});
+
 ipcMain.handle('set-app-behavior-settings', async (_event, payload = {}) => {
   const updates = (payload && typeof payload === 'object' && !Array.isArray(payload)) ? payload : {};
   try {
@@ -5229,4 +5268,3 @@ ipcMain.on('set-presentation-frozen', (_event, payload) => {
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();
 });
-
