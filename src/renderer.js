@@ -40,6 +40,28 @@
     RICH_TEXT_MODE: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4.2 5.1a1.9 1.9 0 0 1 1.9-1.9h11.8a1.9 1.9 0 0 1 1.9 1.9v1.6a1.1 1.1 0 1 1-2.2 0V5.8h-4.4V18h1.7a1.1 1.1 0 1 1 0 2.2H9.1a1.1 1.1 0 1 1 0-2.2h1.7V5.8H6.4v.9a1.1 1.1 0 1 1-2.2 0z" fill="currentColor"></path></svg>`,
     RAW_EDITOR: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4.2 5.1a1.9 1.9 0 0 1 1.9-1.9h11.8a1.9 1.9 0 0 1 1.9 1.9v1.6a1.1 1.1 0 1 1-2.2 0V5.8h-4.4V18h1.7a1.1 1.1 0 1 1 0 2.2H9.1a1.1 1.1 0 1 1 0-2.2h1.7V5.8H6.4v.9a1.1 1.1 0 1 1-2.2 0z" fill="currentColor"></path></svg>`,
     IMPORT: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M7 8H5.8A2.8 2.8 0 0 0 3 10.8v6.4A2.8 2.8 0 0 0 5.8 20h12.4a2.8 2.8 0 0 0 2.8-2.8v-6.4A2.8 2.8 0 0 0 18.2 8H17" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"></path><path d="M12 3v10.4" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"></path><path d="m7.8 10.8 4.2 4.2 4.2-4.2" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"></path></svg>`,
+EXPORT_PDF: `<svg width="16" height="16" fill="currentColor" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg">
+  <!-- whole icon scaled down + moved right -->
+  <g transform="translate(1.2 0.8) scale(0.88)">
+    
+    <!-- outer box (same style as before) -->
+    <path
+      d="M3.75 0.5a2.5 2.5 0 0 0-2.5 2.5v12a2.5 2.5 0 0 0 2.5 2.5h8.5a2.5 2.5 0 0 0 2.5-2.5V3a2.5 2.5 0 0 0-2.5-2.5z"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="1.3"
+      stroke-linejoin="round"
+    />
+
+    <!-- inner shape unchanged relative to box -->
+    <path
+      d="M4.603 12.087a.8.8 0 0 1-.438-.42c-.195-.388-.13-.776.08-1.102.198-.307.526-.568.897-.787a7.7 7.7 0 0 1 1.482-.645 20 20 0 0 0 1.062-2.227 7.3 7.3 0 0 1-.43-1.295c-.086-.4-.119-.796-.046-1.136.075-.354.274-.672.65-.823.192-.077.4-.12.602-.077a.7.7 0 0 1 .477.365c.088.164.12.356.127.538.007.187-.012.395-.047.614-.084.51-.27 1.134-.52 1.794a11 11 0 0 0 .98 1.686 5.8 5.8 0 0 1 1.334.05c.364.065.734.195.96.465.12.144.193.32.2.518.007.192-.047.382-.138.563a1.04 1.04 0 0 1-.354.416.86.86 0 0 1-.51.138c-.331-.014-.654-.196-.933-.417a5.7 5.7 0 0 1-.911-.95 11.6 11.6 0 0 0-1.997.406 11.3 11.3 0 0 1-1.021 1.51c-.29.35-.608.655-.926.787a.8.8 0 0 1-.58.029m1.379-1.901q-.25.115-.459.238c-.328.194-.541.383-.647.547-.094.145-.096.25-.04.361q.016.032.026.044l.035-.012c.137-.056.355-.235.635-.572a8 8 0 0 0 .45-.606m1.64-1.33a13 13 0 0 1 1.01-.193 12 12 0 0 1-.51-.858 21 21 0 0 1-.5 1.05zm2.446.45q.226.244.435.41c.24.19.407.253.498.256a.1.1 0 0 0 .07-.015.3.3 0 0 0 .094-.125.44.44 0 0 0 .059-.2.1.1 0 0 0-.026-.063c-.052-.062-.2-.152-.518-.209a4 4 0 0 0-.612-.053zM8.078 5.8a7 7 0 0 0 .2-.828q.046-.282.038-.465a.6.6 0 0 0-.032-.198.5.5 0 0 0-.145.04c-.087.035-.158.106-.196.283-.04.192-.03.469.046.822q.036.167.09.346z"
+      stroke="currentColor"
+      stroke-width="0.5"
+    />
+    
+  </g>
+</svg>`,  
     SNAPSHOT_PICKER: `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M4 12h16M4 17h10"></path></svg>`,
     REVERT_CHANGE: `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14 4 9l5-5"></path><path d="M4 9h8a6 6 0 0 1 6 6v1"></path></svg>`,
     CLOUD_DELETE: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 17.5a4.5 4.5 0 0 0-1.2-8.8A6 6 0 0 0 7 7.2a4.8 4.8 0 0 0 0 9.6H8.5"></path><line x1="9" y1="16" x2="15" y2="16"></line></svg>`,
@@ -88,6 +110,28 @@
     PRESENTATION_END: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="6.4" y="6.4" width="11.2" height="11.2" rx="2.8" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"></rect></svg>`,
     PRESENTATION_LASER: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="2.1" stroke="currentColor" stroke-width="2.1"></circle><path d="M12 3.5v3.1M12 17.4v3.1M3.5 12h3.1M17.4 12h3.1M6.2 6.2l2.2 2.2M15.6 15.6l2.2 2.2M6.2 17.8l2.2-2.2M15.6 8.4l2.2-2.2" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"></path></svg>`,
     CLOUD_UPLOAD: `<svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M18.42 8.22a7 7 0 0 0-13.36 1.89A4 4 0 0 0 6 18a1 1 0 0 0 0-2a2 2 0 0 1 0-4a1 1 0 0 0 1-1a5 5 0 0 1 9.73-1.61a1 1 0 0 0 .78.67a3 3 0 0 1 .24 5.84a1 1 0 0 0 .5 1.94a5 5 0 0 0 .17-9.62m-5.71 2.07a1 1 0 0 0-.33-.21a1 1 0 0 0-.76 0a1 1 0 0 0-.33.21l-3 3a1 1 0 0 0 1.42 1.42l1.29-1.3V19a1 1 0 0 0 2 0v-5.59l1.29 1.3a1 1 0 0 0 1.42 0a1 1 0 0 0 0-1.42Z"/></svg>`,
+EXPORT_PDF: `<svg width="16" height="16" fill="currentColor" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg">
+  <!-- whole icon scaled down + moved right -->
+  <g transform="translate(1.2 0.8) scale(0.88)">
+    
+    <!-- outer box (same style as before) -->
+    <path
+      d="M3.75 0.5a2.5 2.5 0 0 0-2.5 2.5v12a2.5 2.5 0 0 0 2.5 2.5h8.5a2.5 2.5 0 0 0 2.5-2.5V3a2.5 2.5 0 0 0-2.5-2.5z"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="1.5"
+      stroke-linejoin="round"
+    />
+
+    <!-- inner shape unchanged relative to box -->
+    <path
+      d="M4.603 12.087a.8.8 0 0 1-.438-.42c-.195-.388-.13-.776.08-1.102.198-.307.526-.568.897-.787a7.7 7.7 0 0 1 1.482-.645 20 20 0 0 0 1.062-2.227 7.3 7.3 0 0 1-.43-1.295c-.086-.4-.119-.796-.046-1.136.075-.354.274-.672.65-.823.192-.077.4-.12.602-.077a.7.7 0 0 1 .477.365c.088.164.12.356.127.538.007.187-.012.395-.047.614-.084.51-.27 1.134-.52 1.794a11 11 0 0 0 .98 1.686 5.8 5.8 0 0 1 1.334.05c.364.065.734.195.96.465.12.144.193.32.2.518.007.192-.047.382-.138.563a1.04 1.04 0 0 1-.354.416.86.86 0 0 1-.51.138c-.331-.014-.654-.196-.933-.417a5.7 5.7 0 0 1-.911-.95 11.6 11.6 0 0 0-1.997.406 11.3 11.3 0 0 1-1.021 1.51c-.29.35-.608.655-.926.787a.8.8 0 0 1-.58.029m1.379-1.901q-.25.115-.459.238c-.328.194-.541.383-.647.547-.094.145-.096.25-.04.361q.016.032.026.044l.035-.012c.137-.056.355-.235.635-.572a8 8 0 0 0 .45-.606m1.64-1.33a13 13 0 0 1 1.01-.193 12 12 0 0 1-.51-.858 21 21 0 0 1-.5 1.05zm2.446.45q.226.244.435.41c.24.19.407.253.498.256a.1.1 0 0 0 .07-.015.3.3 0 0 0 .094-.125.44.44 0 0 0 .059-.2.1.1 0 0 0-.026-.063c-.052-.062-.2-.152-.518-.209a4 4 0 0 0-.612-.053zM8.078 5.8a7 7 0 0 0 .2-.828q.046-.282.038-.465a.6.6 0 0 0-.032-.198.5.5 0 0 0-.145.04c-.087.035-.158.106-.196.283-.04.192-.03.469.046.822q.036.167.09.346z"
+      stroke="currentColor"
+      stroke-width="0.6"
+    />
+    
+  </g>
+</svg>`,  
     CLOUD_DELETE: `<svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="m16.71 16.29l-13-13a1 1 0 0 0-1.42 1.42l3.36 3.35a7 7 0 0 0-.59 2A4 4 0 0 0 6 18h9.59l2.7 2.71a1 1 0 0 0 1.42 0a1 1 0 0 0 0-1.42ZM6 16a2 2 0 0 1 0-4a1 1 0 0 0 1-1a5 5 0 0 1 .2-1.39L13.59 16Zm12.42-7.78A7 7 0 0 0 12 4a6.7 6.7 0 0 0-2.32.4a1 1 0 0 0 .66 1.88A4.9 4.9 0 0 1 12 6a5 5 0 0 1 4.73 3.39a1 1 0 0 0 .78.67a3 3 0 0 1 1.85 4.79a1 1 0 0 0 .16 1.4a1 1 0 0 0 .62.22a1 1 0 0 0 .78-.38a5 5 0 0 0-2.5-7.87"/></svg>`,
     COLLABORATE: `<svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12.3 12.22A4.92 4.92 0 0 0 14 8.5a5 5 0 0 0-10 0a4.92 4.92 0 0 0 1.7 3.72A8 8 0 0 0 1 19.5a1 1 0 0 0 2 0a6 6 0 0 1 12 0a1 1 0 0 0 2 0a8 8 0 0 0-4.7-7.28M9 11.5a3 3 0 1 1 3-3a3 3 0 0 1-3 3m9.74.32A5 5 0 0 0 15 3.5a1 1 0 0 0 0 2a3 3 0 0 1 3 3a3 3 0 0 1-1.5 2.59a1 1 0 0 0-.5.84a1 1 0 0 0 .45.86l.39.26l.13.07a7 7 0 0 1 4 6.38a1 1 0 0 0 2 0a9 9 0 0 0-4.23-7.68"/></svg>`,
     LOG_IN: `<svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M20 12a1 1 0 0 0-1-1h-7.59l2.3-2.29a1 1 0 1 0-1.42-1.42l-4 4a1 1 0 0 0-.21.33a1 1 0 0 0 0 .76a1 1 0 0 0 .21.33l4 4a1 1 0 0 0 1.42-1.42L11.41 13H19a1 1 0 0 0 1-1M7 2h10a3 3 0 0 1 3 3v3a1 1 0 0 1-2 0V5a1 1 0 0 0-1-1H7a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-3a1 1 0 0 1 2 0v3a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3V5a3 3 0 0 1 3-3"/></svg>`,
@@ -481,6 +525,91 @@
     const files = await pickNoteImportFiles();
     if (!files.length) return false;
     return insertImportedFilesIntoPane(pane, files, { selection });
+  }
+
+  function getNotePdfExportTitle(tab) {
+    if (tab && typeof tab.title === 'string' && tab.title.trim()) return tab.title.trim();
+    if (tab && typeof tab.path === 'string' && tab.path.trim()) {
+      return getNoteDisplayName(tab.path.split('/').pop() || tab.path);
+    }
+    return 'Untitled note';
+  }
+
+  function getPdfExportThemeMode() {
+    const rawTheme = String(document.documentElement.getAttribute('data-theme') || '').trim().toLowerCase();
+    return rawTheme === 'dark' ? 'dark' : 'light';
+  }
+
+  function buildNotePdfExportMarkup(content) {
+    const host = document.createElement('div');
+    host.className = 'live-markdown-editor live-rich-editor cm-host md-view noto-pdf-export-root';
+    renderMarkdownToPresentationElement(String(content || ''), host);
+    host.querySelectorAll('input.task-list-item-checkbox[type="checkbox"]').forEach(box => {
+      const span = document.createElement('span');
+      span.className = 'task-list-item-checkbox' + (box.checked ? ' checked' : '');
+      span.textContent = box.checked ? '☑' : '☐';
+      if (box.parentNode) box.parentNode.replaceChild(span, box);
+    });
+    host.querySelectorAll('a[href]').forEach((link) => {
+      link.setAttribute('rel', 'noreferrer noopener');
+      link.setAttribute('target', '_blank');
+    });
+    return host.outerHTML;
+  }
+
+  async function exportPaneNoteAsPdf(pane, tab = null) {
+    const targetPane = pane || activePane || null;
+    const targetTab = tab || (targetPane && typeof targetPane.getActiveTab === 'function' ? targetPane.getActiveTab() : null);
+    if (!targetPane || !targetTab || isStorageTab(targetTab) || isPopupTab(targetTab)) {
+      showToast('Open a note to export it as PDF.', 'info');
+      return false;
+    }
+    if (
+      !window.api
+      || typeof window.api.chooseNotePdfExportPath !== 'function'
+      || typeof window.api.exportNotePdf !== 'function'
+    ) {
+      showToast('PDF export is not available in this build.', 'warning');
+      return false;
+    }
+    const title = getNotePdfExportTitle(targetTab);
+    let exportPathResult = null;
+    try {
+      exportPathResult = await window.api.chooseNotePdfExportPath({
+        title,
+        suggestedName: title,
+        relativePath: targetTab.path || ''
+      });
+    } catch (error) {
+      exportPathResult = {
+        canceled: true,
+        error: error && error.message ? String(error.message) : 'Failed to choose a PDF export path.'
+      };
+    }
+    if (!exportPathResult || exportPathResult.canceled) {
+      if (exportPathResult && exportPathResult.error) showToast(exportPathResult.error, 'warning');
+      return false;
+    }
+    const currentContent = typeof targetPane.getCurrentEditorText === 'function'
+      ? targetPane.getCurrentEditorText()
+      : (typeof targetTab.content === 'string' ? targetTab.content : '');
+    const exportResult = await runWithTaskLoadingOverlay(() => window.api.exportNotePdf({
+      filePath: exportPathResult.filePath,
+      title,
+      html: buildNotePdfExportMarkup(currentContent),
+      theme: getPdfExportThemeMode()
+    }));
+    if (!exportResult || !exportResult.success) {
+      showToast(
+        exportResult && exportResult.error
+          ? exportResult.error
+          : 'Failed to export this note as PDF.',
+        'warning'
+      );
+      return false;
+    }
+    showToast(`Exported "${title}" as PDF.`, 'success');
+    return true;
   }
 
   function findImportedImageOpeningTagRange(content, imageId) {
@@ -987,11 +1116,12 @@
     { label: 'Bullet List', desc: 'Unordered list', snippet: '- ' },
     { label: 'Numbered List', desc: 'Ordered list', snippet: '1. ' },
     { label: 'Blockquote', desc: 'Quote block', snippet: '> ' },
-    { label: 'Callout Note', desc: 'GFM note callout', snippet: '> [!NOTE]\n> ' },
     { label: 'Divider', desc: 'Horizontal rule', snippet: '\n---\n' },
+    { label: 'Date', desc: 'Insert today using your note date format', getSnippet: () => formatCurrentNoteDateText() },
     { label: 'Table', desc: 'Markdown table', snippet: '\n| Column 1 | Column 2 |\n| --- | --- |\n| Value | Value |\n' },
-    { label: 'Link', desc: 'Hyperlink', snippet: '[Link Title](https://)', cursorOffset: -1 },
-    { label: 'Image', desc: 'Markdown image', snippet: '![Alt text](https://)', cursorOffset: -1 },
+    { label: 'Note Link', desc: 'Note reference [note]', snippet: '[note[[cursor]]]' },
+    { label: 'Heading Link', desc: 'Heading reference [[heading]]', snippet: '[[heading[[cursor]]]]' },
+    { label: 'Bracket Link', desc: 'External bracket link [link]', snippet: '[https://example.com[[cursor]]]' },
     { label: 'Math Inline', desc: 'Inline LaTeX math', snippet: '$x^2$', cursorOffset: -1 },
     { label: 'Math Block', desc: 'LaTeX equation block', snippet: '\n$$\nx = \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}\n$$\n', cursorOffset: -3 }
   ];
@@ -1432,7 +1562,12 @@
     const replaceFrom = Math.max(0, Number.isFinite(slashMenu.replaceFrom) ? slashMenu.replaceFrom : 0);
     const before = text.substring(0, replaceFrom);
     const after = text.substring(currentPos);
-    const rawSnippet = typeof cmd.snippet === 'string'
+    const computedSnippet = typeof cmd.getSnippet === 'function'
+      ? cmd.getSnippet({ pane, editor })
+      : '';
+    const rawSnippet = typeof computedSnippet === 'string' && computedSnippet
+      ? computedSnippet
+      : typeof cmd.snippet === 'string'
       ? cmd.snippet
       : typeof cmd.insert === 'string'
       ? cmd.insert
@@ -2174,6 +2309,14 @@
         const label = item.querySelector('label.task-list-item-label');
         if (label) label.classList.toggle('cm-task-checked-text', Boolean(box && box.checked));
       });
+      if (targetElement.classList.contains('noto-pdf-export-root')) {
+        targetElement.querySelectorAll('input.task-list-item-checkbox').forEach(box => {
+          const span = document.createElement('span');
+          span.className = 'task-list-item-checkbox' + (box.checked ? ' checked' : '');
+          span.textContent = box.checked ? '☑' : '☐';
+          box.parentNode.replaceChild(span, box);
+        });
+      }
       decorateRenderedMarkdown(targetElement);
     } catch (e) {
       targetElement.textContent = md || '';
@@ -2408,7 +2551,9 @@
   const APP_SHORTCUTS_KEY = 'notoAppShortcuts';
   const THEME_MODE_STORAGE_KEY = 'notoThemeMode';
   const APP_SIZE_MODE_STORAGE_KEY = 'notoAppSizeMode';
+  const TAB_ICON_MODE_STORAGE_KEY = 'notoTabIconMode';
   const THEME_MODE_VALUES = new Set(['system', 'light', 'dark']);
+  const TAB_ICON_MODE_VALUES = new Set(['off', 'modified', 'all']);
   const APP_SIZE_MODE_ORDER = ['normal', 'smaller', 'smallest'];
   const APP_SIZE_MODE_PRESETS = {
     normal: { label: 'Normal', percent: 100, zoom: 1 },
@@ -2420,6 +2565,7 @@
   const TOAST_HISTORY_MAX_ITEMS = 400;
   const TOAST_SETTINGS_STORAGE_KEY = 'notoToastSettings';
   const NOTE_FOOTER_SETTINGS_STORAGE_KEY = 'notoNoteFooterSettings';
+  const NOTE_DATE_FORMAT_DEFAULT = 'dd/MM/yyyy';
   const TOAST_DEFAULT_DURATION_MS = 8000;
   const TOAST_MIN_DURATION_MS = 0;
   const TOAST_MAX_DURATION_MS = 1000 * 60 * 60;
@@ -2434,12 +2580,14 @@
     lines: false,
     lastModified: false,
     createdAt: false,
-    countSpaces: true
+    countSpaces: true,
+    dateFormat: NOTE_DATE_FORMAT_DEFAULT
   });
   const APP_SHORTCUT_DEFAULTS = {
     findInNote: 'Ctrl+F',
     globalSearch: 'Ctrl+Shift+F',
     openCollaborations: 'Ctrl+Shift+C',
+    exportNotePdf: 'Ctrl+Shift+E',
     openBin: 'Ctrl+Shift+B',
     newItem: 'Ctrl+N',
     newTab: 'Ctrl+T',
@@ -2466,6 +2614,7 @@
   let versionHistoryPanelWidthPx = loadVersionHistoryPanelWidth();
   let appThemeMode = loadAppThemeMode();
   let appSizeMode = loadAppSizeMode();
+  let tabIconMode = loadTabIconMode();
   let toastSettings = loadToastSettings();
   let noteFooterSettings = loadNoteFooterSettings();
   let systemThemeMediaQuery = null;
@@ -2499,6 +2648,37 @@
     } catch (error) {
       return 'normal';
     }
+  }
+
+  function normalizeTabIconMode(value) {
+    const raw = String(value || '').trim().toLowerCase();
+    return TAB_ICON_MODE_VALUES.has(raw) ? raw : 'off';
+  }
+
+  function loadTabIconMode() {
+    try {
+      return normalizeTabIconMode(window.localStorage.getItem(TAB_ICON_MODE_STORAGE_KEY));
+    } catch (error) {
+      return 'off';
+    }
+  }
+
+  function writeTabIconMode() {
+    try {
+      window.localStorage.setItem(TAB_ICON_MODE_STORAGE_KEY, tabIconMode);
+    } catch (error) {}
+  }
+
+  function getTabIconMode() {
+    tabIconMode = normalizeTabIconMode(tabIconMode);
+    return tabIconMode;
+  }
+
+  function setTabIconMode(nextMode) {
+    tabIconMode = normalizeTabIconMode(nextMode);
+    writeTabIconMode();
+    refreshOpenTabsForPath('');
+    return getTabIconMode();
   }
 
   function clampToastDurationMs(value) {
@@ -2546,6 +2726,14 @@
     return getToastSettings();
   }
 
+  function normalizeNoteDateFormat(value, fallback = NOTE_DATE_FORMAT_DEFAULT) {
+    const base = (typeof fallback === 'string' && fallback.trim())
+      ? fallback.trim().slice(0, 80)
+      : NOTE_DATE_FORMAT_DEFAULT;
+    const raw = typeof value === 'string' ? value.trim() : '';
+    return raw ? raw.slice(0, 80) : base;
+  }
+
   function normalizeNoteFooterSettings(raw, fallback = NOTE_FOOTER_DEFAULT_SETTINGS) {
     const base = fallback && typeof fallback === 'object' ? fallback : NOTE_FOOTER_DEFAULT_SETTINGS;
     const source = raw && typeof raw === 'object' ? raw : {};
@@ -2556,7 +2744,8 @@
       lines: source.lines == null ? Boolean(base.lines) : Boolean(source.lines),
       lastModified: source.lastModified == null ? Boolean(base.lastModified) : Boolean(source.lastModified),
       createdAt: source.createdAt == null ? Boolean(base.createdAt) : Boolean(source.createdAt),
-      countSpaces: source.countSpaces == null ? Boolean(base.countSpaces) : Boolean(source.countSpaces)
+      countSpaces: source.countSpaces == null ? Boolean(base.countSpaces) : Boolean(source.countSpaces),
+      dateFormat: normalizeNoteDateFormat(source.dateFormat, base.dateFormat)
     };
   }
 
@@ -2911,13 +3100,190 @@
     return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
   }
 
-  function formatEuDateTime(value) {
+  const NOTE_DATE_FORMAT_TOKEN_ORDER = [
+    'dddd', 'ddd', 'MMMM', 'MMM', 'yyyy', 'YYYY', 'yy', 'YY',
+    'dd', 'DD', 'd', 'D', 'MM', 'M', 'HH', 'H', 'hh', 'h', 'mm', 'm', 'ss', 's', 'A', 'a'
+  ];
+  const noteDatePartFormatterCache = new Map();
+
+  function validateNoteDateFormat(value, fallback = NOTE_DATE_FORMAT_DEFAULT) {
+    const format = normalizeNoteDateFormat(value, fallback);
+    let tokenCount = 0;
+
+    for (let index = 0; index < format.length;) {
+      const char = format[index];
+      if (char === '[') {
+        const endIndex = format.indexOf(']', index + 1);
+        if (endIndex < 0) {
+          return {
+            valid: false,
+            format,
+            error: 'Close every [ literal section with a matching ].'
+          };
+        }
+        index = endIndex + 1;
+        continue;
+      }
+      if (char === '\'') {
+        const endIndex = format.indexOf('\'', index + 1);
+        if (endIndex < 0) {
+          return {
+            valid: false,
+            format,
+            error: 'Close every quoted literal section with another single quote.'
+          };
+        }
+        index = endIndex + 1;
+        continue;
+      }
+
+      const token = NOTE_DATE_FORMAT_TOKEN_ORDER.find((candidate) => format.startsWith(candidate, index));
+      if (token) {
+        tokenCount += 1;
+        index += token.length;
+        continue;
+      }
+
+      if (/[A-Za-z]/.test(char)) {
+        let endIndex = index + 1;
+        while (endIndex < format.length && /[A-Za-z]/.test(format[endIndex])) endIndex += 1;
+        return {
+          valid: false,
+          format,
+          error: `Unsupported date token "${format.slice(index, endIndex)}".`
+        };
+      }
+
+      index += 1;
+    }
+
+    if (!tokenCount) {
+      return {
+        valid: false,
+        format,
+        error: 'Include at least one date token like dd, MM, yyyy, MMMM, or dddd.'
+      };
+    }
+
+    return {
+      valid: true,
+      format,
+      preview: formatNoteDate(Date.now(), format)
+    };
+  }
+
+  function formatNoteDatePart(date, options) {
+    const key = JSON.stringify(options || {});
+    let formatter = noteDatePartFormatterCache.get(key);
+    if (formatter === undefined) {
+      try {
+        formatter = new Intl.DateTimeFormat(undefined, options || {});
+      } catch (error) {
+        formatter = null;
+      }
+      noteDatePartFormatterCache.set(key, formatter);
+    }
+    if (!formatter) return '';
+    try {
+      return formatter.format(date);
+    } catch (error) {
+      return '';
+    }
+  }
+
+  function formatNoteDateToken(date, token) {
+    const pad = (value) => String(value).padStart(2, '0');
+    switch (token) {
+      case 'dddd': return formatNoteDatePart(date, { weekday: 'long' });
+      case 'ddd': return formatNoteDatePart(date, { weekday: 'short' });
+      case 'MMMM': return formatNoteDatePart(date, { month: 'long' });
+      case 'MMM': return formatNoteDatePart(date, { month: 'short' });
+      case 'yyyy':
+      case 'YYYY':
+        return String(date.getFullYear());
+      case 'yy':
+      case 'YY':
+        return pad(date.getFullYear() % 100);
+      case 'dd':
+      case 'DD':
+        return pad(date.getDate());
+      case 'd':
+      case 'D':
+        return String(date.getDate());
+      case 'MM':
+        return pad(date.getMonth() + 1);
+      case 'M':
+        return String(date.getMonth() + 1);
+      case 'HH':
+        return pad(date.getHours());
+      case 'H':
+        return String(date.getHours());
+      case 'hh': {
+        const hours = date.getHours() % 12 || 12;
+        return pad(hours);
+      }
+      case 'h':
+        return String(date.getHours() % 12 || 12);
+      case 'mm':
+        return pad(date.getMinutes());
+      case 'm':
+        return String(date.getMinutes());
+      case 'ss':
+        return pad(date.getSeconds());
+      case 's':
+        return String(date.getSeconds());
+      case 'A':
+        return date.getHours() >= 12 ? 'PM' : 'AM';
+      case 'a':
+        return date.getHours() >= 12 ? 'pm' : 'am';
+      default:
+        return token;
+    }
+  }
+
+  function formatNoteDate(value, pattern = NOTE_DATE_FORMAT_DEFAULT) {
     const timestamp = normalizeNoteTimestamp(value);
     if (!timestamp) return '';
     const date = new Date(timestamp);
     if (Number.isNaN(date.getTime())) return '';
-    const pad = (part) => String(part).padStart(2, '0');
-    return `${pad(date.getDate())}.${pad(date.getMonth() + 1)}.${date.getFullYear()} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
+    const format = normalizeNoteDateFormat(pattern, NOTE_DATE_FORMAT_DEFAULT);
+    let output = '';
+
+    for (let index = 0; index < format.length;) {
+      const char = format[index];
+      if (char === '[') {
+        const endIndex = format.indexOf(']', index + 1);
+        if (endIndex >= 0) {
+          output += format.slice(index + 1, endIndex);
+          index = endIndex + 1;
+          continue;
+        }
+      }
+      if (char === '\'') {
+        const endIndex = format.indexOf('\'', index + 1);
+        if (endIndex >= 0) {
+          output += format.slice(index + 1, endIndex);
+          index = endIndex + 1;
+          continue;
+        }
+      }
+
+      const token = NOTE_DATE_FORMAT_TOKEN_ORDER.find((candidate) => format.startsWith(candidate, index));
+      if (token) {
+        output += formatNoteDateToken(date, token);
+        index += token.length;
+        continue;
+      }
+
+      output += char;
+      index += 1;
+    }
+
+    return output;
+  }
+
+  function formatCurrentNoteDateText() {
+    return formatNoteDate(Date.now(), getNoteFooterSettings().dateFormat);
   }
 
   function countNoteCharacters(text, options = {}) {
@@ -3017,9 +3383,9 @@
       segments.push(formatCountLabel(countNoteLines(metricText), 'line'));
     }
 
-    const modifiedLabel = settings.lastModified ? formatEuDateTime(tab.modifiedAt) : '';
+    const modifiedLabel = settings.lastModified ? formatNoteDate(tab.modifiedAt, settings.dateFormat) : '';
     if (modifiedLabel) segments.push(`Modified ${modifiedLabel}`);
-    const createdLabel = settings.createdAt ? formatEuDateTime(tab.createdAt) : '';
+    const createdLabel = settings.createdAt ? formatNoteDate(tab.createdAt, settings.dateFormat) : '';
     if (createdLabel) segments.push(`Created ${createdLabel}`);
 
     if (!segments.length) {
@@ -3543,6 +3909,16 @@
     if (normalized) sidebarItemStyles[safePath] = normalized;
     else delete sidebarItemStyles[safePath];
     writeSidebarItemStyleMap();
+    refreshOpenTabsForPath(safePath);
+  }
+
+  function refreshOpenTabsForPath(pathVal) {
+    const safePath = normalizeStoragePath(pathVal);
+    panes.forEach((pane) => {
+      if (!pane || typeof pane.renderTabs !== 'function') return;
+      if (safePath && Array.isArray(pane.tabs) && !pane.tabs.some((tab) => tab && tab.path === safePath)) return;
+      pane.renderTabs();
+    });
   }
 
   function resolveSidebarItemIconMarkup(file) {
@@ -3570,6 +3946,57 @@
     iconEl.classList.toggle('is-empty', !iconMarkup);
     const iconColor = resolveSidebarItemIconColor(file);
     iconEl.style.color = iconColor || '';
+  }
+
+  function getTabNoteAppearance(tab) {
+    if (!tab || isStorageTab(tab) || isPopupTab(tab) || !tab.path) return null;
+    const mode = getTabIconMode();
+    if (mode === 'off') return null;
+    const style = getSidebarItemStyle(tab.path);
+    if (mode === 'modified' && !style) return null;
+    const fileLike = { path: tab.path, isDirectory: false };
+    const markup = resolveSidebarItemIconMarkup(fileLike);
+    if (!markup) return null;
+    return {
+      markup,
+      color: resolveSidebarItemIconColor(fileLike) || ''
+    };
+  }
+
+  function createTabLeadingIndicator(tab, options = {}) {
+    const hasCloud = Boolean(options.hasCloud);
+    const isPresentationTab = Boolean(options.isPresentationTab);
+    if (isPresentationTab) {
+      const liveMarker = document.createElement('span');
+      liveMarker.className = 'tab-cloud-indicator is-live-presentation';
+      liveMarker.setAttribute('aria-hidden', 'true');
+      return liveMarker;
+    }
+
+    const noteAppearance = getTabNoteAppearance(tab);
+    if (noteAppearance) {
+      const iconEl = document.createElement('span');
+      iconEl.className = 'tab-note-icon';
+      iconEl.setAttribute('aria-hidden', 'true');
+      iconEl.innerHTML = noteAppearance.markup;
+      iconEl.style.color = noteAppearance.color || '';
+      if (hasCloud) {
+        iconEl.classList.add('has-cloud-indicator');
+        const cloudBadge = document.createElement('span');
+        cloudBadge.className = 'tab-note-cloud-indicator';
+        iconEl.appendChild(cloudBadge);
+      }
+      return iconEl;
+    }
+
+    if (hasCloud) {
+      const cloudMarker = document.createElement('span');
+      cloudMarker.className = 'tab-cloud-indicator';
+      cloudMarker.setAttribute('aria-hidden', 'true');
+      return cloudMarker;
+    }
+
+    return null;
   }
 
   function debounceSave(path, content) {
@@ -4651,6 +5078,8 @@
       notifications: readToastHistory({ persistPrune: true }),
       toastSettings: getToastSettings(),
       noteFooterSettings: getNoteFooterSettings(),
+      noteFooterDateFormatDraft: getNoteFooterSettings().dateFormat,
+      tabIconMode: getTabIconMode(),
       appBehavior: {
         closeAppOnWindowClose: false,
         openOnSystemStart: false,
@@ -4776,6 +5205,18 @@
 
     function isModalStillVisible() {
       return Boolean(els.modalBackdrop && els.modalBackdrop.getAttribute('aria-hidden') === 'false');
+    }
+
+    function shouldDeferSettingsContentRender() {
+      const activeEl = document.activeElement instanceof Element ? document.activeElement : null;
+      return Boolean(
+        isShortcutCaptureActive
+        || (activeEl && activeEl.closest && (
+          activeEl.closest('.settings-shortcut-input')
+          || activeEl.closest('.settings-date-format-control')
+          || activeEl.closest('.settings-text-input')
+        ))
+      );
     }
 
     function buildSection(title) {
@@ -5000,6 +5441,102 @@
       return label;
     }
 
+    function createSettingsDateFormatControl(initialValue, handlers = {}) {
+      const wrap = document.createElement('div');
+      wrap.className = 'settings-date-format-control';
+
+      const row = document.createElement('div');
+      row.className = 'settings-date-format-row';
+
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.className = 'settings-text-input';
+      input.value = normalizeNoteDateFormat(
+        typeof settingsState.noteFooterDateFormatDraft === 'string'
+          ? settingsState.noteFooterDateFormatDraft
+          : initialValue,
+        NOTE_DATE_FORMAT_DEFAULT
+      );
+      input.placeholder = NOTE_DATE_FORMAT_DEFAULT;
+      input.autocomplete = 'off';
+      input.spellcheck = false;
+
+      const confirmBtn = document.createElement('button');
+      confirmBtn.type = 'button';
+      confirmBtn.className = 'btn-secondary';
+      confirmBtn.textContent = 'Confirm';
+
+      const resetBtn = document.createElement('button');
+      resetBtn.type = 'button';
+      resetBtn.className = 'btn-secondary';
+      resetBtn.textContent = 'Reset';
+
+      const status = document.createElement('div');
+      status.className = 'settings-date-format-status';
+
+      let confirmedValue = normalizeNoteDateFormat(initialValue, NOTE_DATE_FORMAT_DEFAULT);
+      settingsState.noteFooterDateFormatDraft = input.value;
+
+      const setStatus = (message, type = 'info') => {
+        status.textContent = String(message || '');
+        status.classList.toggle('is-error', type === 'error');
+        input.classList.toggle('is-invalid', type === 'error');
+      };
+
+      const renderConfirmedPreview = (prefix = 'Preview') => {
+        const validation = validateNoteDateFormat(confirmedValue, NOTE_DATE_FORMAT_DEFAULT);
+        const preview = validation.valid && validation.preview ? validation.preview : formatNoteDate(Date.now(), confirmedValue);
+        setStatus(`${prefix}: ${preview || confirmedValue}`);
+      };
+
+      const confirmValue = () => {
+        const validation = validateNoteDateFormat(input.value, confirmedValue);
+        if (!validation.valid) {
+          setStatus(validation.error || 'That date format is not valid yet.', 'error');
+          showToast(validation.error || 'That date format is not valid yet.', 'warning');
+          return false;
+        }
+        confirmedValue = validation.format;
+        input.value = confirmedValue;
+        settingsState.noteFooterDateFormatDraft = confirmedValue;
+        if (typeof handlers.onConfirm === 'function') handlers.onConfirm(confirmedValue, input);
+        setStatus(`Confirmed. Preview: ${validation.preview || confirmedValue}`);
+        return true;
+      };
+
+      confirmBtn.onclick = () => {
+        confirmValue();
+      };
+
+      resetBtn.onclick = () => {
+        confirmedValue = NOTE_DATE_FORMAT_DEFAULT;
+        input.value = confirmedValue;
+        settingsState.noteFooterDateFormatDraft = confirmedValue;
+        if (typeof handlers.onConfirm === 'function') handlers.onConfirm(confirmedValue, input);
+        renderConfirmedPreview('Reset to default');
+      };
+
+      input.addEventListener('input', () => {
+        settingsState.noteFooterDateFormatDraft = input.value;
+        if (input.classList.contains('is-invalid')) input.classList.remove('is-invalid');
+        if (normalizeNoteDateFormat(input.value, confirmedValue) === confirmedValue) {
+          renderConfirmedPreview();
+          return;
+        }
+        setStatus('Draft only. Confirm to use this format.');
+      });
+      input.addEventListener('keydown', (event) => {
+        if (event.key !== 'Enter') return;
+        event.preventDefault();
+        confirmValue();
+      });
+
+      renderConfirmedPreview();
+      row.append(input, confirmBtn, resetBtn);
+      wrap.append(row, status);
+      return wrap;
+    }
+
     function normalizeAppBehaviorResult(result = {}) {
       const settings = result && typeof result === 'object' && result.settings && typeof result.settings === 'object'
         ? result.settings
@@ -5026,6 +5563,7 @@
         options.render !== false
         && settingsState.activeCategory === 'settings'
         && isModalStillVisible()
+        && !shouldDeferSettingsContentRender()
       ) {
         renderSettingsCategoryContent();
       }
@@ -5058,6 +5596,7 @@
         options.render !== false
         && settingsState.activeCategory === 'settings'
         && isModalStillVisible()
+        && !shouldDeferSettingsContentRender()
       ) {
         renderSettingsCategoryContent();
       }
@@ -5267,6 +5806,36 @@
         renderCapturePreview();
       });
       return input;
+    }
+
+    function createTabIconModeControl() {
+      const wrap = document.createElement('div');
+      wrap.className = 'settings-choice-group';
+      wrap.setAttribute('role', 'radiogroup');
+      wrap.setAttribute('aria-label', 'Tab note icon display');
+      const options = [
+        { id: 'off', label: 'Off' },
+        { id: 'modified', label: 'Modified only' },
+        { id: 'all', label: 'All notes' }
+      ];
+      options.forEach((option) => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'settings-choice-btn';
+        const isActive = settingsState.tabIconMode === option.id;
+        btn.classList.toggle('is-active', isActive);
+        btn.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+        btn.setAttribute('role', 'radio');
+        btn.setAttribute('aria-checked', isActive ? 'true' : 'false');
+        btn.textContent = option.label;
+        btn.onclick = () => {
+          if (settingsState.tabIconMode === option.id) return;
+          settingsState.tabIconMode = setTabIconMode(option.id);
+          renderSettingsCategoryContent();
+        };
+        wrap.appendChild(btn);
+      });
+      return wrap;
     }
 
     function createProfileColorControl(ownerEmail, initial, options = {}) {
@@ -5494,6 +6063,13 @@
       };
 
       appendRow(rows, 'Workspace folder', chooseFolderAction, settingsState.rootPath || 'Not set');
+      appendRow(
+        rows,
+        'Tab note icons',
+        createTabIconModeControl(),
+        'Choose whether titlebar tabs show no note icons, only customized note icons, or every note icon.',
+        'is-rich'
+      );
       const closeOnWindowCloseToggle = createSettingsToggle(settingsState.appBehavior.closeAppOnWindowClose, (closeAppOnWindowClose, inputEl) => {
         persistAppBehaviorSettings({ closeAppOnWindowClose }, { input: inputEl });
       });
@@ -5632,7 +6208,7 @@
         createSettingsToggle(settingsState.noteFooterSettings.lastModified, (lastModified) => {
           applyNoteFooterSetting({ lastModified });
         }),
-        'Show the latest saved edit time in EU date format.'
+        'Show the latest saved edit date using the date format below.'
       );
       appendRow(
         noteFooterSection.rows,
@@ -5640,7 +6216,18 @@
         createSettingsToggle(settingsState.noteFooterSettings.createdAt, (createdAt) => {
           applyNoteFooterSetting({ createdAt });
         }),
-        'Show when the note file was created in EU date format.'
+        'Show when the note file was created using the date format below.'
+      );
+      appendRow(
+        noteFooterSection.rows,
+        'Date format',
+        createSettingsDateFormatControl(settingsState.noteFooterSettings.dateFormat, {
+          onConfirm: (dateFormat) => {
+          applyNoteFooterSetting({ dateFormat });
+          }
+        }),
+        'Type a format like dd/MM/yyyy, d MMMM yyyy, or MMMM d, yyyy, then confirm it. Unconfirmed drafts do not change the footer or the /date slash command.',
+        'is-rich'
       );
       shellContent.appendChild(noteFooterSection.section);
 
@@ -5649,6 +6236,7 @@
         { key: 'findInNote', label: 'Find in note', description: 'Opens in-note find for the active editor.' },
         { key: 'globalSearch', label: 'Global search', description: 'Focuses the top search field.' },
         { key: 'openCollaborations', label: 'Collaborate note', description: 'Opens collaborate popup for the current note.' },
+        { key: 'exportNotePdf', label: 'Export note as PDF', description: 'Exports the current note as a PDF file.' },
         { key: 'openBin', label: 'Bin popup', description: 'Opens bin to restore or permanently delete items.' },
         { key: 'newItem', label: 'Create note', description: 'Opens create new file or folder.' },
         { key: 'newTab', label: 'Open new tab', description: 'Opens a new Storage tab.' },
@@ -5899,7 +6487,7 @@
         settingsState.rootPath = 'Unable to load folder';
       } finally {
         rootPathLoadInFlight = false;
-        if (settingsState.activeCategory === 'settings' && isModalStillVisible()) {
+        if (settingsState.activeCategory === 'settings' && isModalStillVisible() && !shouldDeferSettingsContentRender()) {
           renderSettingsCategoryContent();
         }
       }
@@ -5938,12 +6526,7 @@
       } finally {
         usageRequestInFlight = false;
         if (settingsState.activeCategory === 'settings' && isModalStillVisible()) {
-          const activeEl = document.activeElement instanceof Element ? document.activeElement : null;
-          const isEditingShortcut = Boolean(
-            isShortcutCaptureActive
-            || (activeEl && activeEl.closest && activeEl.closest('.settings-shortcut-input'))
-          );
-          if (!isEditingShortcut) renderSettingsCategoryContent();
+          if (!shouldDeferSettingsContentRender()) renderSettingsCategoryContent();
         }
       }
     }
@@ -12390,6 +12973,7 @@
                   <button class="pane-menu-item" data-action="presentation">${ICONS.PRESENTATION}<span>Presentation</span></button>
                   <button class="pane-menu-item" data-action="toggle-editor-mode">${ICONS.RAW_EDITOR}<span>Raw editor</span></button>
                   <button class="pane-menu-item" data-action="import">${ICONS.IMPORT}<span>Import</span></button>
+                  <button class="pane-menu-item" data-action="export-pdf">${ICONS.EXPORT_PDF}<span>Export PDF</span></button>
                   <button class="pane-menu-item" data-action="collaborate">${ICONS.COLLABORATE}<span>Collaborate</span></button>
                   <button class="pane-menu-item is-danger-action" data-action="delete-cloud" hidden>${ICONS.CLOUD_DELETE}<span>Delete from cloud</span></button>
                   <div class="pane-menu-progress" hidden><div class="bar"></div></div>
@@ -12647,6 +13231,10 @@
           }
           if (action === 'import') {
             await openImportPickerForPane(this, preservedSelection);
+            return;
+          }
+          if (action === 'export-pdf') {
+            await exportPaneNoteAsPdf(this, tab);
             return;
           }
           if (action === 'delete-cloud') {
@@ -13854,12 +14442,13 @@
         titleText.textContent = tab.title;
         const cloudNoteId = getCloudNoteIdByPath(tab.path);
         const isPresentationTab = isLivePresentationSource(paneOwner, tab);
-        if (cloudNoteId || isPresentationTab) {
-          titleEl.classList.add('has-cloud');
-          const cloudMarker = document.createElement('span');
-          cloudMarker.className = `tab-cloud-indicator${isPresentationTab ? ' is-live-presentation' : ''}`;
-          cloudMarker.setAttribute('aria-hidden', 'true');
-          titleEl.appendChild(cloudMarker);
+        const leadingIndicator = createTabLeadingIndicator(tab, {
+          hasCloud: Boolean(cloudNoteId),
+          isPresentationTab
+        });
+        if (leadingIndicator) {
+          titleEl.classList.add('has-leading-indicator');
+          titleEl.appendChild(leadingIndicator);
         }
         titleEl.appendChild(titleText);
         el.querySelector('.close').onmousedown = (ev) => { ev.stopPropagation(); paneOwner.closeTab(tab.id); };
@@ -20873,6 +21462,16 @@
       e.stopPropagation();
       if (typeof e.stopImmediatePropagation === 'function') e.stopImmediatePropagation();
       showCollaborateModal(shortcutPane, shortcutTab).catch(() => {});
+      return;
+    }
+    if (isShortcutEventMatch(e, getAppShortcut('exportNotePdf'))) {
+      const shortcutPane = activePane || null;
+      const shortcutTab = shortcutPane && shortcutPane.getActiveTab ? shortcutPane.getActiveTab() : null;
+      if (!shortcutPane || !shortcutTab || isStorageTab(shortcutTab) || isPopupTab(shortcutTab)) return;
+      e.preventDefault();
+      e.stopPropagation();
+      if (typeof e.stopImmediatePropagation === 'function') e.stopImmediatePropagation();
+      exportPaneNoteAsPdf(shortcutPane, shortcutTab).catch(() => {});
       return;
     }
     if (isShortcutEventMatch(e, getAppShortcut('openBin'))) {

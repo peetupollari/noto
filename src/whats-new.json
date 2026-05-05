@@ -1,0 +1,29 @@
+{
+  "alwaysShow": false,
+  "updateNumber": "v0.1.5",
+  "updateDate": "05/05/2026",
+  "intro": {
+  },
+  "sections": [
+    {
+      "number": "01",
+      "heading": "Icons on tabs",
+      "paragraph": "You can now enable icons to be shown on tabs. This can be done in the settings under the 'General' section."
+    },
+    {
+      "number": "02",
+      "heading": "Date format options",
+      "paragraph": "You can now modify the date format used all over the application. This allows you to customize how dates are displayed in the app. This can be done in the settings under 'General' tab in the 'Note footer' section."
+    },
+    {
+      "number": "03",
+      "heading": "New date item in slash commands",
+      "paragraph": "By opening the slash command menu (by typing '/') you can now insert a date item. This allows you to quickly insert the current date into your notes."
+    },
+    {
+      "number": "04",
+      "heading": "New PDF export option",
+      "paragraph": "You can now export your notes as PDF files. This can be done from the note menu. Note that this is still an experimental feature and may not work perfectly."
+    }
+  ]
+}

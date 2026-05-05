@@ -1,0 +1,246 @@
+.whats-new-shell {
+  padding: 20px 24px 24px;
+}
+
+.whats-new-card {
+  width: min(920px, 100%);
+  height: min(760px, calc(100vh - var(--titlebar-h) - 28px));
+  padding: 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.whats-new-header {
+  display: grid;
+  gap: 6px;
+  flex: 0 0 auto;
+}
+
+.whats-new-title {
+  margin: 0;
+  max-width: 14ch;
+  font-size: 31px;
+}
+
+.whats-new-date {
+  margin: 0;
+  max-width: none;
+}
+
+.whats-new-content-shell {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 4px 0;
+}
+
+.whats-new-content {
+  width: 100%;
+  height: 100%;
+  overflow-y: auto;
+  padding-right: 10px;
+}
+
+.whats-new-page,
+.whats-new-measure-page {
+  display: grid;
+  gap: 18px;
+  align-content: start;
+}
+
+.whats-new-page .whats-new-block {
+  opacity: 0;
+  transform: translateY(16px);
+  animation: authEnter 520ms cubic-bezier(0.2, 0.9, 0.2, 1) forwards;
+}
+
+.whats-new-page .whats-new-block:nth-child(1) {
+  animation-delay: 40ms;
+}
+
+.whats-new-page .whats-new-block:nth-child(2) {
+  animation-delay: 100ms;
+}
+
+.whats-new-page .whats-new-block:nth-child(3) {
+  animation-delay: 160ms;
+}
+
+.whats-new-page .whats-new-block:nth-child(4) {
+  animation-delay: 220ms;
+}
+
+.whats-new-page .whats-new-block:nth-child(5) {
+  animation-delay: 280ms;
+}
+
+.whats-new-page .whats-new-block:nth-child(6) {
+  animation-delay: 340ms;
+}
+
+.whats-new-measure-page .whats-new-block {
+  opacity: 1 !important;
+  transform: none !important;
+  animation: none !important;
+}
+
+.whats-new-block {
+  padding: 0;
+  margin-bottom: 15px;
+}
+
+.whats-new-block-head {
+  display: grid;
+  gap: 8px;
+}
+
+.whats-new-block-number {
+  color: var(--text-sub);
+  font-size: 25px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.whats-new-block-copy {
+  min-width: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.whats-new-block-heading {
+  margin: 0;
+  font-size: 20px;
+  line-height: 1.14;
+  letter-spacing: -0.02em;
+}
+
+.whats-new-block.is-intro .whats-new-block-heading {
+  font-size: 23px;
+}
+
+.whats-new-block-paragraph {
+  margin: 0;
+  color: var(--text-sub);
+  font-size: 13px;
+  line-height: 1.68;
+  white-space: pre-wrap;
+}
+
+.whats-new-block.is-empty {
+  display: grid;
+  place-items: center;
+  min-height: 220px;
+  text-align: center;
+}
+
+.whats-new-block.is-empty .whats-new-block-copy {
+  max-width: 42ch;
+}
+
+.whats-new-footer {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 32px;
+  padding-top: 8px;
+}
+
+.whats-new-nav-btn.is-hidden,
+.whats-new-finish-btn.is-hidden {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.whats-new-footer-actions {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  min-width: 96px;
+  height: 26px;
+}
+
+.whats-new-footer-actions > .whats-new-nav-btn,
+.whats-new-footer-actions > .whats-new-finish-btn {
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.whats-new-page-indicator {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  margin: 0;
+  color: var(--text-sub);
+  font-size: 12px;
+  line-height: 1.45;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+.whats-new-finish-btn {
+  background: #ffffff !important;
+  color: #1a1a1a !important;
+  border-color: #d8d8d8 !important;
+}
+
+.whats-new-finish-btn:hover {
+  opacity: 1;
+  background: #f3f3f3 !important;
+}
+
+.whats-new-message {
+  margin: -4px 0 0;
+}
+
+.whats-new-measure {
+  position: fixed;
+  left: -100000px;
+  top: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .whats-new-page .whats-new-block {
+    opacity: 1;
+    transform: none;
+    animation: none;
+  }
+}
+
+@media (max-width: 900px) {
+  .whats-new-shell {
+    padding: 16px;
+  }
+
+  .whats-new-card {
+    width: 100%;
+    height: min(760px, calc(100vh - var(--titlebar-h) - 20px));
+    padding: 20px;
+  }
+}
+
+@media (max-width: 620px) {
+  .whats-new-title {
+    max-width: none;
+    font-size: 27px;
+  }
+
+  .whats-new-content {
+    padding-right: 6px;
+  }
+
+  .whats-new-footer {
+    gap: 8px;
+  }
+
+  .whats-new-footer-actions {
+    min-width: 96px;
+  }
+}

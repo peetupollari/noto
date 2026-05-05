@@ -2,6 +2,7 @@
 const path = require('path');
 const fs = require('fs');
 const { randomUUID } = require('crypto');
+const { pathToFileURL } = require('url');
 const { createClient } = require('@supabase/supabase-js');
 const { Menu, Tray, nativeImage } = require('electron');
 const { autoUpdater } = require('electron-updater');
@@ -21,6 +22,7 @@ const TRASH_META_FILE_NAME = 'trash-meta.json';
 const AUTH_SESSION_FILE = path.join(app.getPath('userData'), 'auth-session.json');
 const AUTH_PASSWORD_FILE = path.join(app.getPath('userData'), 'auth-password.json');
 const APP_RELEASE_CONFIG_FILE = path.join(__dirname, 'app-release.config.json');
+const WHATS_NEW_FILE = path.join(__dirname, 'src', 'whats-new.json');
 const DEFAULT_CLOUD_STORAGE_BUCKET = 'noto-cloud-notes';
 const DEFAULT_CLOUD_STORAGE_PREFIX = 'notes';
 const DEFAULT_GLOBAL_USER_QUOTA_KB = 1000;
@@ -34,7 +36,7 @@ const AUTO_UPDATE_STARTUP_DELAY_MS = 15 * 1000;
 const AUTO_UPDATE_REPEAT_INTERVAL_MS = 6 * 60 * 60 * 1000;
 const DEFAULT_STRIPE_TEST_PAYMENT_LINK_URL = 'https://buy.stripe.com/28E8wI5flfm7fE7fpw2Nq00';
 const STRIPE_PAYMENT_STATUS_FUNCTION_NAME = 'payment-status';
-const APP_RESTRICTED_PAGE_NAMES = new Set(['index.html', 'welcome.html', 'login.html', 'signup.html']);
+const APP_RESTRICTED_PAGE_NAMES = new Set(['index.html', 'welcome.html', 'whats-new.html', 'login.html', 'signup.html']);
 const RESET_APP_CONFIRMATION_PHRASE = 'RESET NOTO';
 const RESET_APP_PAYMENT_OVERRIDE_CODE = 'Q4M7-X9V2-L3K8-R6T1';
 
@@ -86,6 +88,29 @@ function writeSettings(obj) {
     console.error('Failed to write settings:', e);
     return false;
   }
+}
+
+function escapeHtmlAttribute(value) {
+  return String(value || '')
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
+function sanitizePdfFileStem(value = '') {
+  const cleaned = String(value || '')
+    .replace(/[<>:"/\\|?*\u0000-\u001F]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .replace(/[. ]+$/g, '')
+    .trim();
+  return cleaned || 'Note';
+}
+
+function ensurePdfFilePath(filePath = '') {
+  const raw = String(filePath || '').trim();
+  if (!raw) return '';
+  return /\.pdf$/i.test(raw) ? raw : `${raw}.pdf`;
 }
 
 const DEFAULT_APP_BEHAVIOR_SETTINGS = Object.freeze({
@@ -247,16 +272,20 @@ function deriveSupabaseFunctionsBaseUrl(projectUrl = '') {
   return `https://${match[1]}.functions.supabase.co`;
 }
 
+function hasPersistedApplicationUsage() {
+  return (
+    fs.existsSync(APP_STATE_FILE)
+    || fs.existsSync(AUTH_SESSION_FILE)
+    || fs.existsSync(AUTH_PASSWORD_FILE)
+  );
+}
+
 function hasSeenWelcomeScreen() {
   const settings = readSettingsObject();
   if (Object.prototype.hasOwnProperty.call(settings, 'hasSeenWelcomeScreen')) {
     return Boolean(settings.hasSeenWelcomeScreen);
   }
-  const hasExistingUsage =
-    fs.existsSync(APP_STATE_FILE)
-    || fs.existsSync(AUTH_SESSION_FILE)
-    || fs.existsSync(AUTH_PASSWORD_FILE);
-  return hasExistingUsage;
+  return hasPersistedApplicationUsage();
 }
 
 function markWelcomeScreenSeen() {
@@ -270,6 +299,123 @@ function markWelcomeScreenSeen() {
 function readSettingsObject() {
   const parsed = readSettings();
   return (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) ? parsed : {};
+}
+
+function normalizeWhatsNewText(value) {
+  return typeof value === 'string' ? value.trim() : '';
+}
+
+function getCurrentAppVersion() {
+  let version = '0.0.0';
+  try {
+    version = typeof app.getVersion === 'function' && app.getVersion()
+      ? String(app.getVersion()).trim()
+      : version;
+  } catch (error) {}
+  return version;
+}
+
+function normalizeWhatsNewSection(raw = {}, index = 0, options = {}) {
+  const source = (raw && typeof raw === 'object' && !Array.isArray(raw)) ? raw : {};
+  const heading = normalizeWhatsNewText(source.heading);
+  const paragraph = normalizeWhatsNewText(source.paragraph);
+  const number = options.allowNumber === false ? '' : normalizeWhatsNewText(source.number);
+  const id = normalizeWhatsNewText(options.id) || `section-${index + 1}`;
+
+  return {
+    id,
+    number,
+    heading,
+    paragraph,
+    hasContent: Boolean(number || heading || paragraph)
+  };
+}
+
+function readWhatsNewDefinition() {
+  const raw = readJsonFileIfExists(WHATS_NEW_FILE, null);
+  const appVersion = getCurrentAppVersion();
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
+    return {
+      available: false,
+      appVersion,
+      alwaysShow: false,
+      updateNumber: '',
+      updateDate: '',
+      intro: null,
+      sections: []
+    };
+  }
+
+  const introSource = (raw.intro && typeof raw.intro === 'object' && !Array.isArray(raw.intro))
+    ? raw.intro
+    : raw;
+  const intro = normalizeWhatsNewSection(introSource, 0, {
+    id: 'intro',
+    allowNumber: false
+  });
+  const sections = Array.isArray(raw.sections)
+    ? raw.sections
+      .map((section, index) => normalizeWhatsNewSection(section, index))
+      .filter((section) => section.hasContent)
+    : [];
+
+  return {
+    available: true,
+    appVersion,
+    alwaysShow: Boolean(raw.alwaysShow),
+    updateNumber: normalizeWhatsNewText(raw.updateNumber),
+    updateDate: normalizeWhatsNewText(raw.updateDate),
+    intro: intro.hasContent ? intro : null,
+    sections
+  };
+}
+
+function writeWhatsNewSeenState(appVersion = '', updateNumber = '') {
+  const nextSettings = {
+    ...readSettingsObject(),
+    lastSeenWhatsNewAppVersion: normalizeWhatsNewText(appVersion),
+    lastSeenWhatsNewUpdateNumber: normalizeWhatsNewText(updateNumber)
+  };
+  return writeSettings(nextSettings);
+}
+
+function markCurrentWhatsNewSeen() {
+  const definition = readWhatsNewDefinition();
+  return writeWhatsNewSeenState(definition.appVersion, definition.updateNumber);
+}
+
+function shouldShowWhatsNewPage() {
+  const definition = readWhatsNewDefinition();
+  if (!definition.available) return false;
+  if (definition.alwaysShow) return true;
+
+  const settings = readSettingsObject();
+  const lastSeenAppVersion = normalizeWhatsNewText(settings.lastSeenWhatsNewAppVersion);
+  const lastSeenUpdateNumber = normalizeWhatsNewText(settings.lastSeenWhatsNewUpdateNumber);
+
+  if (!lastSeenAppVersion && !lastSeenUpdateNumber && !hasPersistedApplicationUsage()) {
+    writeWhatsNewSeenState(definition.appVersion, definition.updateNumber);
+    return false;
+  }
+
+  return (
+    definition.appVersion !== lastSeenAppVersion
+    || definition.updateNumber !== lastSeenUpdateNumber
+  );
+}
+
+function getWhatsNewStateSnapshot() {
+  const definition = readWhatsNewDefinition();
+  return {
+    available: definition.available,
+    shouldShow: definition.available ? shouldShowWhatsNewPage() : false,
+    appVersion: definition.appVersion,
+    alwaysShow: definition.alwaysShow,
+    updateNumber: definition.updateNumber,
+    updateDate: definition.updateDate,
+    intro: definition.intro,
+    sections: definition.sections
+  };
 }
 
 function normalizeAppBehaviorSettings(raw = {}) {
@@ -620,15 +766,9 @@ function readBundledJsonConfig(fileName, fallback = {}) {
 
 function readAppReleaseInfo() {
   const configData = readJsonFileIfExists(APP_RELEASE_CONFIG_FILE, {});
-  let version = '0.0.0';
-  try {
-    version = typeof app.getVersion === 'function' && app.getVersion()
-      ? String(app.getVersion()).trim()
-      : version;
-  } catch (error) {}
   const autoUpdateSnapshot = getAutoUpdateStatusSnapshot();
   return {
-    version,
+    version: getCurrentAppVersion(),
     showAlphaBadge: Boolean(configData.showAlphaBadge),
     showBetaBadge: Boolean(configData.showBetaBadge),
     canCheckForUpdates: autoUpdateSnapshot.supported,
@@ -2500,13 +2640,22 @@ function validateEmailAndPassword(email, password) {
   return '';
 }
 
+function getPrimaryAppPagePath() {
+  const srcDir = path.join(__dirname, 'src');
+  const loginPath = path.join(srcDir, 'login.html');
+  const indexPath = path.join(srcDir, 'index.html');
+  const legacyIndexPath = path.join(__dirname, 'index.html');
+
+  if (fs.existsSync(indexPath)) return indexPath;
+  if (fs.existsSync(loginPath)) return loginPath;
+  return legacyIndexPath;
+}
+
 function getStartupPagePath() {
   const srcDir = path.join(__dirname, 'src');
   const paymentPath = path.join(srcDir, 'payment.html');
   const welcomePath = path.join(srcDir, 'welcome.html');
-  const loginPath = path.join(srcDir, 'login.html');
-  const indexPath = path.join(srcDir, 'index.html');
-  const legacyIndexPath = path.join(__dirname, 'index.html');
+  const whatsNewPath = path.join(srcDir, 'whats-new.html');
 
   if (fs.existsSync(paymentPath) && !isPaymentVerified()) {
     return paymentPath;
@@ -2515,9 +2664,10 @@ function getStartupPagePath() {
     markWelcomeScreenSeen();
     return welcomePath;
   }
-  if (fs.existsSync(indexPath)) return indexPath;
-  if (fs.existsSync(loginPath)) return loginPath;
-  return legacyIndexPath;
+  if (fs.existsSync(whatsNewPath) && shouldShowWhatsNewPage()) {
+    return whatsNewPath;
+  }
+  return getPrimaryAppPagePath();
 }
 
 function createWindow() {
@@ -2701,6 +2851,25 @@ ipcMain.handle('payment-get-next-page', async () => {
   return {
     success: true,
     page: path.basename(getStartupPagePath())
+  };
+});
+
+ipcMain.handle('whats-new-get-state', async () => {
+  return {
+    success: true,
+    ...getWhatsNewStateSnapshot()
+  };
+});
+
+ipcMain.handle('whats-new-complete', async () => {
+  const markedSeen = markCurrentWhatsNewSeen();
+  const nextPagePath = isPaymentVerified()
+    ? getPrimaryAppPagePath()
+    : path.join(__dirname, 'src', 'payment.html');
+  return {
+    success: markedSeen,
+    page: path.basename(nextPagePath),
+    error: markedSeen ? '' : 'Failed to save the update tour state.'
   };
 });
 
@@ -4019,6 +4188,86 @@ ipcMain.handle('reset-local-app-state', async (_event, payload = {}) => {
   }
 });
 
+function getSuggestedNotePdfExportPath(payload = {}) {
+  const suggestedName = `${sanitizePdfFileStem(payload && (payload.suggestedName || payload.title) || 'Note')}.pdf`;
+  let defaultDir = '';
+  try {
+    const sourcePath = normalizeRelativePath(payload && (payload.relativePath || payload.sourcePath) || '');
+    if (sourcePath) {
+      const sourceAbsPath = resolveInsideBase(sourcePath);
+      const sourceDir = path.dirname(sourceAbsPath);
+      if (sourceDir && fs.existsSync(sourceDir)) defaultDir = sourceDir;
+    }
+  } catch (error) {}
+  if (!defaultDir) {
+    try {
+      const baseDir = getBaseDir();
+      if (baseDir && fs.existsSync(baseDir)) defaultDir = baseDir;
+    } catch (error) {}
+  }
+  if (!defaultDir) defaultDir = app.getPath('documents');
+  return path.join(defaultDir, suggestedName);
+}
+
+function buildNotePdfExportDocument(payload = {}) {
+  const theme = String(payload && payload.theme || '').trim().toLowerCase() === 'dark' ? 'dark' : 'light';
+  const title = sanitizePdfFileStem(payload && payload.title || 'Note');
+  const contentHtml = typeof payload.html === 'string' ? payload.html : '';
+  const sourceBaseHref = pathToFileURL(path.join(__dirname, 'src') + path.sep).toString();
+  return `<!DOCTYPE html>
+<html class="noto-pdf-export-html" data-theme="${escapeHtmlAttribute(theme)}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>${escapeHtmlAttribute(title)}</title>
+  <base href="${escapeHtmlAttribute(sourceBaseHref)}">
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    @page {
+      margin: 16mm 14mm;
+    }
+
+    html.noto-pdf-export-html,
+    html.noto-pdf-export-html body {
+      height: auto !important;
+      min-height: 0 !important;
+      overflow: visible !important;
+      background: var(--bg) !important;
+    }
+
+    body.noto-pdf-export-page {
+      margin: 0 !important;
+      padding: 0 !important;
+      display: block !important;
+      background: var(--bg) !important;
+      color: var(--text) !important;
+      font-family: var(--editor-font) !important;
+    }
+
+    .noto-pdf-export-shell {
+      width: 100%;
+      padding: 0;
+      background: var(--bg);
+    }
+
+    .noto-pdf-export-root {
+      width: 100%;
+      min-height: 0 !important;
+      max-width: none !important;
+      background: transparent !important;
+    }
+
+    .noto-pdf-export-root .cm-block-render {
+      padding: 0 !important;
+    }
+  </style>
+</head>
+<body class="noto-pdf-export-page">
+  <div class="noto-pdf-export-shell">${contentHtml}</div>
+</body>
+</html>`;
+}
+
 ipcMain.handle('choose-save-location', async () => {
   try {
     const win = BrowserWindow.getFocusedWindow();
@@ -4031,6 +4280,109 @@ ipcMain.handle('choose-save-location', async () => {
     refreshWindowsShellUi({ immediate: true });
     return { canceled: false, path: chosen };
   } catch (e) { return { canceled: true }; }
+});
+
+ipcMain.handle('choose-note-pdf-export-path', async (_event, payload = {}) => {
+  try {
+    const win = BrowserWindow.getFocusedWindow() || mainWindow || null;
+    const result = await dialog.showSaveDialog(win, {
+      title: 'Export note as PDF',
+      defaultPath: getSuggestedNotePdfExportPath(payload),
+      filters: [{ name: 'PDF', extensions: ['pdf'] }]
+    });
+    if (result.canceled || !result.filePath) {
+      return { canceled: true, filePath: '' };
+    }
+    return {
+      canceled: false,
+      filePath: ensurePdfFilePath(result.filePath)
+    };
+  } catch (error) {
+    return {
+      canceled: true,
+      filePath: '',
+      error: error && error.message ? String(error.message) : 'Failed to choose a PDF export path.'
+    };
+  }
+});
+
+ipcMain.handle('export-note-pdf', async (_event, payload = {}) => {
+  let exportWindow = null;
+  let tempHtmlPath = '';
+  try {
+    const targetFilePath = ensurePdfFilePath(payload && payload.filePath);
+    if (!targetFilePath) {
+      return { success: false, error: 'Choose a PDF file path first.' };
+    }
+    const theme = String(payload && payload.theme || '').trim().toLowerCase() === 'dark' ? 'dark' : 'light';
+    const exportHtml = buildNotePdfExportDocument(payload);
+    tempHtmlPath = path.join(
+      app.getPath('temp'),
+      `noto-pdf-export-${Date.now()}-${Math.random().toString(36).slice(2)}.html`
+    );
+    fs.writeFileSync(tempHtmlPath, exportHtml, 'utf8');
+
+    exportWindow = new BrowserWindow({
+      show: false,
+      width: 1280,
+      height: 900,
+      autoHideMenuBar: true,
+      backgroundColor: theme === 'dark' ? '#131313' : '#ffffff',
+      webPreferences: {
+        contextIsolation: true
+      }
+    });
+
+    await exportWindow.loadFile(tempHtmlPath);
+    await exportWindow.webContents.executeJavaScript(`
+      new Promise((resolve) => {
+        let finished = false;
+        const finish = () => {
+          if (finished) return;
+          finished = true;
+          setTimeout(resolve, 80);
+        };
+        const waitFonts = (document.fonts && document.fonts.ready)
+          ? document.fonts.ready.catch(() => {})
+          : Promise.resolve();
+        const waitImages = Promise.all(Array.from(document.images || []).map((img) => {
+          if (!img || img.complete) return Promise.resolve();
+          return new Promise((done) => {
+            img.addEventListener('load', done, { once: true });
+            img.addEventListener('error', done, { once: true });
+          });
+        }));
+        Promise.all([waitFonts, waitImages]).then(finish).catch(finish);
+        setTimeout(finish, 3000);
+      });
+    `, true);
+
+    const pdfBuffer = await exportWindow.webContents.printToPDF({
+      printBackground: true,
+      preferCSSPageSize: true
+    });
+    fs.mkdirSync(path.dirname(targetFilePath), { recursive: true });
+    fs.writeFileSync(targetFilePath, pdfBuffer);
+    shell.showItemInFolder(targetFilePath);
+    return {
+      success: true,
+      filePath: targetFilePath
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error: error && error.message ? String(error.message) : 'Failed to export the note as PDF.'
+    };
+  } finally {
+    if (exportWindow && !exportWindow.isDestroyed()) {
+      exportWindow.destroy();
+    }
+    if (tempHtmlPath) {
+      try {
+        fs.unlinkSync(tempHtmlPath);
+      } catch (error) {}
+    }
+  }
 });
 
 ipcMain.handle('open-import-files', async () => {

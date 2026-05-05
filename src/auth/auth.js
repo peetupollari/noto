@@ -214,6 +214,10 @@
   }
 
   function goToApp() {
+    if (page === 'welcome') {
+      goToPostPaymentPage('index.html');
+      return;
+    }
     window.location.replace('index.html');
   }
 
@@ -221,17 +225,17 @@
     window.location.replace('signup.html');
   }
 
-  async function goToPostPaymentPage() {
+  async function goToPostPaymentPage(fallbackPage = 'welcome.html') {
     if (!paymentAPI || typeof paymentAPI.getNextPage !== 'function') {
-      window.location.replace('welcome.html');
+      window.location.replace(fallbackPage);
       return;
     }
     try {
       const result = await paymentAPI.getNextPage();
       const nextPage = result && result.success && result.page ? String(result.page).trim() : '';
-      window.location.replace(nextPage || 'welcome.html');
+      window.location.replace(nextPage || fallbackPage);
     } catch (error) {
-      window.location.replace('welcome.html');
+      window.location.replace(fallbackPage);
     }
   }
 

@@ -20,6 +20,8 @@ contextBridge.exposeInMainWorld('api', {
   setAppBehaviorSettings: async (settings) => ipcRenderer.invoke('set-app-behavior-settings', settings),
   resetLocalAppState: async (confirmationText) => ipcRenderer.invoke('reset-local-app-state', { confirmationText }),
   openImportFiles: async () => ipcRenderer.invoke('open-import-files'),
+  chooseNotePdfExportPath: async (payload) => ipcRenderer.invoke('choose-note-pdf-export-path', payload),
+  exportNotePdf: async (payload) => ipcRenderer.invoke('export-note-pdf', payload),
   // Presentation Mode
   getDisplays: async () => ipcRenderer.invoke('get-displays'),
   openPresentation: async (data) => ipcRenderer.invoke('open-presentation', data),
@@ -103,6 +105,11 @@ contextBridge.exposeInMainWorld('paymentAPI', {
   openCheckout: () => ipcRenderer.invoke('payment-open-checkout'),
   refreshStatus: () => ipcRenderer.invoke('payment-refresh-status'),
   getNextPage: () => ipcRenderer.invoke('payment-get-next-page')
+});
+
+contextBridge.exposeInMainWorld('whatsNewAPI', {
+  getState: () => ipcRenderer.invoke('whats-new-get-state'),
+  complete: () => ipcRenderer.invoke('whats-new-complete')
 });
 
 contextBridge.exposeInMainWorld('cloudAPI', {
