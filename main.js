@@ -2873,6 +2873,16 @@ ipcMain.handle('whats-new-complete', async () => {
   };
 });
 
+ipcMain.handle('get-whats-new', async () => {
+  try {
+    const filePath = path.join(__dirname, 'src', 'whats-new.json');
+    const data = fs.readFileSync(filePath, 'utf8');
+    return JSON.parse(data);
+  } catch (e) {
+    return null;
+  }
+});
+
 // --- AUTH ---
 ipcMain.handle('auth-get-state', async () => {
   const state = getAuthStateSnapshot();
@@ -5042,14 +5052,7 @@ function collectRecentWorkspaceFolders(limit = JUMP_LIST_RECENT_LIMIT) {
         stack.push(nextRel);
         return;
       }
-      if (stat.isFile()) {
-        notes.push({
-          path: nextRel,
-          title: getJumpEntryDisplayTitle(nextRel, false),
-          mtime,
-          isDirectory: false
-        });
-      }
+      // Skip files - only collect folders for jump list
     });
   }
 

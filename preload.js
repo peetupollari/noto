@@ -19,6 +19,7 @@ contextBridge.exposeInMainWorld('api', {
   installAppUpdateNow: async () => ipcRenderer.invoke('install-app-update-now'),
   setAppBehaviorSettings: async (settings) => ipcRenderer.invoke('set-app-behavior-settings', settings),
   resetLocalAppState: async (confirmationText) => ipcRenderer.invoke('reset-local-app-state', { confirmationText }),
+  getWhatsNew: async () => ipcRenderer.invoke('get-whats-new'),
   openImportFiles: async () => ipcRenderer.invoke('open-import-files'),
   chooseNotePdfExportPath: async (payload) => ipcRenderer.invoke('choose-note-pdf-export-path', payload),
   exportNotePdf: async (payload) => ipcRenderer.invoke('export-note-pdf', payload),

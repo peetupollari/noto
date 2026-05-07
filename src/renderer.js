@@ -5122,6 +5122,11 @@ EXPORT_PDF: `<svg width="16" height="16" fill="currentColor" viewBox="0 0 18 18"
         id: 'notifications',
         label: 'Notifications',
         icon: `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 17h5l-1.4-1.6A2 2 0 0 1 18 14v-3a6 6 0 0 0-4-5.65V4a2 2 0 1 0-4 0v1.35A6 6 0 0 0 6 11v3a2 2 0 0 1-.6 1.4L4 17h5"></path><path d="M9.8 17a2.2 2.2 0 0 0 4.4 0"></path></svg>`
+      },
+      helpSupport: {
+        id: 'help-support',
+        label: 'Help & Support',
+        icon: `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><path d="M12 17h.01"></path></svg>`
       }
     };
     const navGroups = [
@@ -5136,6 +5141,10 @@ EXPORT_PDF: `<svg width="16" height="16" fill="currentColor" viewBox="0 0 18 18"
       {
         heading: 'Cloud',
         items: [settingsNavCatalog.notifications]
+      },
+      {
+        heading: 'Support',
+        items: [settingsNavCatalog.helpSupport]
       }
     ];
 
@@ -6447,6 +6456,142 @@ EXPORT_PDF: `<svg width="16" height="16" fill="currentColor" viewBox="0 0 18 18"
       shellContent.append(section);
     }
 
+    async function renderHelpSupportCategory() {
+      const whatsNewData = await window.api.getWhatsNew();
+      const whatsNewSection = buildSection('What\'s New');
+      const content = document.createElement('div');
+      content.className = 'settings-whats-new-content';
+      if (whatsNewData && whatsNewData.sections) {
+        whatsNewData.sections.forEach((section) => {
+          const block = document.createElement('div');
+          block.className = 'settings-whats-new-block';
+          const header = document.createElement('div');
+          header.className = 'settings-whats-new-header';
+          const number = document.createElement('div');
+          number.className = 'settings-whats-new-number';
+          number.textContent = section.number;
+          const title = document.createElement('h4');
+          title.className = 'settings-whats-new-title';
+          title.textContent = section.heading;
+          header.append(number, title);
+          const paragraph = document.createElement('p');
+          paragraph.className = 'settings-whats-new-paragraph';
+          paragraph.textContent = section.paragraph;
+          block.append(header, paragraph);
+          content.appendChild(block);
+        });
+      } else {
+        const empty = document.createElement('div');
+        empty.className = 'settings-whats-new-empty';
+        empty.textContent = 'No updates available.';
+        content.appendChild(empty);
+      }
+      whatsNewSection.rows.appendChild(content);
+      const changelogBtn = document.createElement('button');
+      changelogBtn.type = 'button';
+      changelogBtn.className = 'btn-secondary';
+      changelogBtn.textContent = 'View Changelog';
+      changelogBtn.onclick = () => {
+        if (window.electronAPI && typeof window.electronAPI.openExternal === 'function') {
+          window.electronAPI.openExternal('https://www.notely.uk/changelog.html').catch(e => {
+            console.error('Failed to open changelog:', e);
+            showToast('Failed to open changelog', 'warning');
+          });
+        }
+      };
+      appendRow(whatsNewSection.rows, 'Read more about changelog', changelogBtn, '', 'is-rich');
+      shellContent.appendChild(whatsNewSection.section);
+
+      const helpSection = buildSection('Contact');
+      const form = document.createElement('form');
+      form.action = 'https://api.web3forms.com/submit';
+      form.method = 'POST';
+      form.className = 'settings-contact-form';
+
+      const accessKey = document.createElement('input');
+      accessKey.type = 'hidden';
+      accessKey.name = 'access_key';
+      accessKey.value = 'f80b5202-87cc-4edc-9d8a-d47b2ef4a8b8';
+      form.appendChild(accessKey);
+
+      const nameGroup = document.createElement('div');
+      nameGroup.className = 'settings-form-group';
+      const nameLabel = document.createElement('label');
+      nameLabel.className = 'settings-form-label';
+      nameLabel.textContent = 'Name';
+      const nameInput = document.createElement('input');
+      nameInput.type = 'text';
+      nameInput.name = 'name';
+      nameInput.required = true;
+      nameInput.placeholder = 'Your Name';
+      nameInput.className = 'settings-help-input';
+      nameGroup.append(nameLabel, nameInput);
+      form.appendChild(nameGroup);
+
+      const emailGroup = document.createElement('div');
+      emailGroup.className = 'settings-form-group';
+      const emailLabel = document.createElement('label');
+      emailLabel.className = 'settings-form-label';
+      emailLabel.textContent = 'Email';
+      const emailInput = document.createElement('input');
+      emailInput.type = 'email';
+      emailInput.name = 'email';
+      emailInput.required = true;
+      emailInput.placeholder = 'Your Email';
+      emailInput.className = 'settings-help-input';
+      emailGroup.append(emailLabel, emailInput);
+      form.appendChild(emailGroup);
+
+      const messageGroup = document.createElement('div');
+      messageGroup.className = 'settings-form-group';
+      const messageLabel = document.createElement('label');
+      messageLabel.className = 'settings-form-label';
+      messageLabel.textContent = 'Message';
+      const messageTextarea = document.createElement('textarea');
+      messageTextarea.name = 'message';
+      messageTextarea.required = true;
+      messageTextarea.placeholder = 'Give feedback, report bugs, chat, or just ask anything - this is a bridge between us';
+      messageTextarea.className = 'settings-help-textarea';
+      messageTextarea.addEventListener('input', () => {
+        messageTextarea.style.height = '80px';
+        messageTextarea.style.height = messageTextarea.scrollHeight + 'px';
+      });
+      // Trigger initial size calculation
+      setTimeout(() => {
+        messageTextarea.style.height = '80px';
+        messageTextarea.style.height = messageTextarea.scrollHeight + 'px';
+      }, 0);
+      messageGroup.append(messageLabel, messageTextarea);
+      form.appendChild(messageGroup);
+
+      const submitBtn = document.createElement('button');
+      submitBtn.type = 'submit';
+      submitBtn.className = 'btn-primary';
+      submitBtn.textContent = 'Submit Form';
+      const submitWrapper = document.createElement('div');
+      submitWrapper.className = 'settings-submit-wrapper';
+      submitWrapper.appendChild(submitBtn);
+      form.appendChild(submitWrapper);
+
+      helpSection.rows.appendChild(form);
+
+      const websiteBtn = document.createElement('button');
+      websiteBtn.type = 'button';
+      websiteBtn.className = 'btn-secondary';
+      websiteBtn.textContent = 'Visit Website';
+      websiteBtn.onclick = () => {
+        if (window.electronAPI && typeof window.electronAPI.openExternal === 'function') {
+          window.electronAPI.openExternal('https://www.notely.uk/noto.html').catch(e => {
+            console.error('Failed to open external URL:', e);
+            showToast('Failed to open website', 'warning');
+          });
+        }
+      };
+      appendRow(helpSection.rows, 'Visit our website', websiteBtn, '');
+
+      shellContent.appendChild(helpSection.section);
+    }
+
       function renderSettingsCategoryContent() {
         const scrollTop = shellContent.scrollTop || 0;
         shellContent.innerHTML = '';
@@ -6459,6 +6604,8 @@ EXPORT_PDF: `<svg width="16" height="16" fill="currentColor" viewBox="0 0 18 18"
           renderThemeCategory();
         } else if (settingsState.activeCategory === 'notifications') {
           renderNotificationsCategory();
+        } else if (settingsState.activeCategory === 'help-support') {
+          renderHelpSupportCategory();
         }
         requestAnimationFrame(() => {
           shellContent.scrollTop = scrollTop;
