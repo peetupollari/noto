@@ -1,17 +1,12 @@
 {
   "alwaysShow": false,
-  "updateNumber": "v0.1.7",
+  "updateNumber": "v0.1.71",
   "updateDate": "07/05/2026",
   "intro": {
   },
   "sections": [
     {
       "number": "01",
-      "heading": "Help & Support",
-      "paragraph": "You can now view the current latest changelog and visit our website directly from the app. This can be done from the 'What's new' section in the settings. We have also added a contact form that allows you to send us messages directly from the app. We would love to hear your feedback and suggestions!"
-    },
-    {
-      "number": "02",
       "heading": "Bug fixes",
       "paragraph": "Stripe payment link has been updated to the correct one."
     }
