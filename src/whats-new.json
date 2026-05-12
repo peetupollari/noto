@@ -1,14 +1,29 @@
 {
   "alwaysShow": false,
-  "updateNumber": "v0.1.71",
-  "updateDate": "07/05/2026",
+  "updateNumber": "v0.1.72",
+  "updateDate": "12/05/2026",
   "intro": {
   },
   "sections": [
     {
       "number": "01",
+      "heading": "PDF export updated",
+      "paragraph": "PDF export is now updated and works correctly."
+    },
+    {
+      "number": "02",
+      "heading": "Links updated",
+      "paragraph": "All links are now typed inside [] and the link type is automatically detected. You  can also add an link label now by typing it like this: [link label](link)."
+    },
+    {
+      "number": "03",
       "heading": "Bug fixes",
-      "paragraph": "Stripe payment link has been updated to the correct one."
+      "paragraph": "When you type ** over painted text, the text will be bolded and when you type `` over painted text, the text will be made inline code."
+    },
+    {
+      "number": "04",
+      "heading": "Scroll adjusted",
+      "paragraph": "Now when you type in your note it won't allways scroll it, it'll only scroll when you create new text lines past an point close the bottom of the screen."
     }
   ]
 }

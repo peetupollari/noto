@@ -3601,12 +3601,18 @@ body.tab-dragging-active * {
   text-decoration: none !important;
 }
 .live-markdown-editor.cm-host .cm-line.cm-md-heading * { text-decoration: none !important; }
-.live-markdown-editor.cm-host .cm-line.cm-md-heading-1 { font-size: 2.1em; font-weight: 800 !important; }
+.live-markdown-editor.cm-host .cm-line.cm-md-heading-1 { font-size: 2.1em; font-weight: 850 !important; }
 .live-markdown-editor.cm-host .cm-line.cm-md-heading-2 { font-size: 1.8em; font-weight: 760 !important; }
 .live-markdown-editor.cm-host .cm-line.cm-md-heading-3 { font-size: 1.55em; font-weight: 720 !important; }
 .live-markdown-editor.cm-host .cm-line.cm-md-heading-4 { font-size: 1.35em; font-weight: 680 !important; }
 .live-markdown-editor.cm-host .cm-line.cm-md-heading-5 { font-size: 1.2em; font-weight: 640 !important; }
 .live-markdown-editor.cm-host .cm-line.cm-md-heading-6 { font-size: 1.1em; font-weight: 600 !important; }
+.live-markdown-editor.cm-host .cm-line.cm-md-heading .tok-strong { font-weight: 600 !important; }
+.live-markdown-editor.cm-host .cm-line.cm-md-heading-2 .tok-strong { font-weight: 580 !important; }
+.live-markdown-editor.cm-host .cm-line.cm-md-heading-3 .tok-strong { font-weight: 560 !important; }
+.live-markdown-editor.cm-host .cm-line.cm-md-heading-4 .tok-strong { font-weight: 440 !important; }
+.live-markdown-editor.cm-host .cm-line.cm-md-heading-5 .tok-strong { font-weight: 420 !important; }
+.live-markdown-editor.cm-host .cm-line.cm-md-heading-6 .tok-strong { font-weight: 350 !important; }
 .live-markdown-editor.cm-host .cm-inline-code {
   background-color: var(--inline-code-bg);
   border-radius: 6px;
@@ -4744,9 +4750,88 @@ body.is-import-image-resizing * {
   list-style: none;
 }
 
+.noto-pdf-export-root .contains-task-list {
+  list-style: none !important;
+  padding-left: 0 !important;
+}
+
+.noto-pdf-export-root li.task-list-item .contains-task-list {
+  padding-left: 1.6em !important;
+  margin-top: 6px;
+}
+
+.noto-pdf-export-root li.task-list-item {
+  list-style: none !important;
+  margin: 0 0 6px 0;
+  padding-left: 0 !important;
+}
+
+.noto-pdf-export-root li.task-list-item label.task-list-item-label {
+  display: contents;
+}
+
+.noto-pdf-export-root li.task-list-item .task-list-item-content {
+  display: inline;
+}
+
 .noto-pdf-export-root .task-list-item-checkbox {
+  display: inline-block;
+  width: 0.92em;
+  height: 0.92em;
   margin-right: 8px;
-  transform: translateY(1px);
+  border: 1.6px solid var(--text-sub);
+  border-radius: 3px;
+  box-sizing: border-box;
+  position: relative;
+  vertical-align: -0.12em;
+  transform: none;
+  text-decoration: none !important;
+}
+
+.noto-pdf-export-root .task-list-item-checkbox.checked {
+  border-color: var(--text);
+  background: var(--text);
+}
+
+.noto-pdf-export-root .task-list-item-checkbox.checked::after {
+  content: "";
+  position: absolute;
+  left: 0.22em;
+  top: 0.05em;
+  width: 0.28em;
+  height: 0.54em;
+  border: solid #fff;
+  border-width: 0 0.13em 0.13em 0;
+  transform: rotate(45deg);
+}
+
+.noto-pdf-export-root .katex-mathml {
+  display: none !important;
+}
+
+.noto-pdf-export-root .math-inline,
+.noto-pdf-export-root .math-inline .katex {
+  display: inline !important;
+}
+
+.noto-pdf-export-root .cm-block-render .math-block {
+  margin: 8px 0 12px !important;
+  page-break-inside: avoid;
+}
+
+.noto-pdf-export-root .cm-block-render blockquote {
+  margin: 0 0 10px 0 !important;
+  padding: 0 0 0 0.85em !important;
+  line-height: 1.45;
+  white-space: normal !important;
+}
+
+.noto-pdf-export-root .cm-block-render blockquote p {
+  margin: 0 0 6px 0;
+}
+
+.noto-pdf-export-root .cm-block-render blockquote > :last-child {
+  margin-bottom: 0 !important;
 }
 
 /* --- Buttons --- */

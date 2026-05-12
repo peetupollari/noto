@@ -1,4 +1,4 @@
-﻿/* renderer.js — Final: Tooltips, Sidebar Toggle, Split Resize Fix & Persistence */
+/* renderer.js — Final: Tooltips, Sidebar Toggle, Split Resize Fix & Persistence */
 
 (function () {
   // --- 1. Sanity Check ---
@@ -430,6 +430,39 @@ EXPORT_PDF: `<svg width="16" height="16" fill="currentColor" viewBox="0 0 18 18"
     return { from: pos, to: pos, anchor: pos, head: pos, empty: true };
   }
 
+  function capturePaneEditorScrollSnapshot(pane) {
+    const entries = [];
+    const add = (element) => {
+      if (!element || !Number.isFinite(element.scrollTop)) return;
+      if (entries.some((entry) => entry.element === element)) return;
+      entries.push({
+        element,
+        top: element.scrollTop,
+        left: Number.isFinite(element.scrollLeft) ? element.scrollLeft : 0
+      });
+    };
+    add(pane && pane.ui && pane.ui.liveEditor);
+    add(pane && pane.ui && pane.ui.editorLayout);
+    add(pane && pane.ui && pane.ui.paneBody);
+    add(pane && pane.live && pane.live.cmView && pane.live.cmView.scrollDOM);
+    return entries;
+  }
+
+  function restorePaneEditorScrollSnapshot(snapshot) {
+    if (!Array.isArray(snapshot) || !snapshot.length) return;
+    const restore = () => {
+      snapshot.forEach((entry) => {
+        const element = entry && entry.element;
+        if (!element || !element.isConnected) return;
+        element.scrollTop = entry.top || 0;
+        if (Number.isFinite(entry.left)) element.scrollLeft = entry.left;
+      });
+    };
+    restore();
+    requestAnimationFrame(restore);
+    setTimeout(restore, 0);
+  }
+
   function dispatchPaneEditorChange(pane, change, selection = null, options = {}) {
     if (!pane) return false;
     const tab = typeof pane.getActiveTab === 'function' ? pane.getActiveTab() : null;
@@ -441,11 +474,15 @@ EXPORT_PDF: `<svg width="16" height="16" fill="currentColor" viewBox="0 0 18 18"
     const editorView = pane.live && pane.live.cmView;
     const focus = options.focus !== false;
     if (editorView && typeof editorView.dispatch === 'function') {
+      const scrollSnapshot = options.preserveScroll === false
+        ? null
+        : capturePaneEditorScrollSnapshot(pane);
       editorView.dispatch({
         changes: change,
         ...(selection ? { selection } : {}),
         ...(options.scrollIntoView === false ? {} : { scrollIntoView: true })
       });
+      restorePaneEditorScrollSnapshot(scrollSnapshot);
       if (focus && pane.live && pane.live.cmApi && typeof pane.live.cmApi.focus === 'function') {
         pane.live.cmApi.focus();
       }
@@ -540,16 +577,71 @@ EXPORT_PDF: `<svg width="16" height="16" fill="currentColor" viewBox="0 0 18 18"
     return rawTheme === 'dark' ? 'dark' : 'light';
   }
 
+  function replaceTaskCheckboxesWithPdfSpans(targetElement) {
+    if (!targetElement) return;
+    targetElement.querySelectorAll('input.task-list-item-checkbox[type="checkbox"], input.cm-task-checkbox[type="checkbox"]').forEach(box => {
+      const span = document.createElement('span');
+      const checked = Boolean(
+        box.checked
+        || box.defaultChecked
+        || box.hasAttribute('checked')
+        || String(box.getAttribute('aria-checked') || '').toLowerCase() === 'true'
+      );
+      span.className = 'task-list-item-checkbox pdf-task-list-checkbox' + (checked ? ' checked' : '');
+      span.setAttribute('aria-hidden', 'true');
+      span.dataset.checked = checked ? 'true' : 'false';
+      if (box.parentNode) box.parentNode.replaceChild(span, box);
+    });
+    targetElement.querySelectorAll('li.task-list-item').forEach((item) => {
+      const existing = item.querySelector(':scope > .pdf-task-list-checkbox, :scope > .task-list-item-checkbox');
+      if (!existing) {
+        const span = document.createElement('span');
+        span.className = 'task-list-item-checkbox pdf-task-list-checkbox';
+        span.setAttribute('aria-hidden', 'true');
+        span.dataset.checked = 'false';
+        item.insertBefore(span, item.firstChild);
+      }
+      item.querySelectorAll(':scope > label.task-list-item-label').forEach((label) => {
+        while (label.firstChild) item.insertBefore(label.firstChild, label);
+        label.remove();
+      });
+      item.querySelectorAll(':scope > label').forEach((label) => {
+        while (label.firstChild) item.insertBefore(label.firstChild, label);
+        label.remove();
+      });
+      normalizeTaskListItemContentSpan(item);
+    });
+  }
+
+  function normalizeTaskListItemContentSpan(item) {
+    if (!item || !(item instanceof HTMLElement)) return null;
+    const marker = item.querySelector(':scope > input.task-list-item-checkbox, :scope > input.cm-task-checkbox, :scope > .task-list-item-checkbox, :scope > .pdf-task-list-checkbox');
+    if (!marker || !marker.parentNode) return null;
+    const existing = item.querySelector(':scope > .task-list-item-content');
+    if (existing) return existing;
+    const content = document.createElement('span');
+    content.className = 'task-list-item-content';
+    let node = marker.nextSibling;
+    while (node) {
+      const next = node.nextSibling;
+      const isNestedList = node.nodeType === 1
+        && node instanceof HTMLElement
+        && /^(UL|OL)$/i.test(node.tagName || '');
+      if (isNestedList) break;
+      content.appendChild(node);
+      node = next;
+    }
+    if (content.childNodes.length > 0) {
+      item.insertBefore(content, marker.nextSibling);
+    }
+    return content;
+  }
+
   function buildNotePdfExportMarkup(content) {
     const host = document.createElement('div');
     host.className = 'live-markdown-editor live-rich-editor cm-host md-view noto-pdf-export-root';
     renderMarkdownToPresentationElement(String(content || ''), host);
-    host.querySelectorAll('input.task-list-item-checkbox[type="checkbox"]').forEach(box => {
-      const span = document.createElement('span');
-      span.className = 'task-list-item-checkbox' + (box.checked ? ' checked' : '');
-      span.textContent = box.checked ? '☑' : '☐';
-      if (box.parentNode) box.parentNode.replaceChild(span, box);
-    });
+    replaceTaskCheckboxesWithPdfSpans(host);
     host.querySelectorAll('a[href]').forEach((link) => {
       link.setAttribute('rel', 'noreferrer noopener');
       link.setAttribute('target', '_blank');
@@ -1120,7 +1212,7 @@ EXPORT_PDF: `<svg width="16" height="16" fill="currentColor" viewBox="0 0 18 18"
     { label: 'Date', desc: 'Insert today using your note date format', getSnippet: () => formatCurrentNoteDateText() },
     { label: 'Table', desc: 'Markdown table', snippet: '\n| Column 1 | Column 2 |\n| --- | --- |\n| Value | Value |\n' },
     { label: 'Note Link', desc: 'Note reference [note]', snippet: '[note[[cursor]]]' },
-    { label: 'Heading Link', desc: 'Heading reference [[heading]]', snippet: '[[heading[[cursor]]]]' },
+    { label: 'Heading Link', desc: 'Heading reference [heading]', snippet: '[heading[[cursor]]]' },
     { label: 'Bracket Link', desc: 'External bracket link [link]', snippet: '[https://example.com[[cursor]]]' },
     { label: 'Math Inline', desc: 'Inline LaTeX math', snippet: '$x^2$', cursorOffset: -1 },
     { label: 'Math Block', desc: 'LaTeX equation block', snippet: '\n$$\nx = \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}\n$$\n', cursorOffset: -3 }
@@ -1320,7 +1412,7 @@ EXPORT_PDF: `<svg width="16" height="16" fill="currentColor" viewBox="0 0 18 18"
     return Boolean(activeInput && editor.contains(activeInput));
   }
 
-  function keepLiveCaretAtTypingAnchorSmooth(scrollContainer, editor) {
+  function keepLiveCaretAtTypingAnchorSmooth(scrollContainer, editor, options = null) {
     if (!scrollContainer || !editor) return;
     if (isFormattedTableEditingActive(editor)) {
       cancelEditorScrollAnimation(scrollContainer);
@@ -1346,7 +1438,11 @@ EXPORT_PDF: `<svg width="16" height="16" fill="currentColor" viewBox="0 0 18 18"
     const targetY = scrollContainer.clientHeight * (2 / 3);
     const currentY = caretBottomWithinContainer - scrollContainer.scrollTop;
     const delta = currentY - targetY;
-    if (Math.abs(delta) < 1) return;
+    if (delta <= 0) return;
+    const onlyScrollOnNewline = Boolean(options && options.onlyScrollOnNewline);
+    const inputWasNewline = Boolean(options && options.inputWasNewline);
+    if (onlyScrollOnNewline && !inputWasNewline) return;
+    if (delta < 1) return;
     animateEditorScrollTo(scrollContainer, scrollContainer.scrollTop + delta);
   }
 
@@ -1561,7 +1657,6 @@ EXPORT_PDF: `<svg width="16" height="16" fill="currentColor" viewBox="0 0 18 18"
     const text = pane.getCurrentEditorText();
     const replaceFrom = Math.max(0, Number.isFinite(slashMenu.replaceFrom) ? slashMenu.replaceFrom : 0);
     const before = text.substring(0, replaceFrom);
-    const after = text.substring(currentPos);
     const computedSnippet = typeof cmd.getSnippet === 'function'
       ? cmd.getSnippet({ pane, editor })
       : '';
@@ -1581,11 +1676,18 @@ EXPORT_PDF: `<svg width="16" height="16" fill="currentColor" viewBox="0 0 18 18"
       newCursorPos = before.length + markerIndex;
     }
     closeSlashMenu();
-    const nextText = before + snippet + after;
-    pane.commitLiveEditorText(nextText, newCursorPos, {
+    dispatchPaneEditorChange(pane, {
+      from: replaceFrom,
+      to: currentPos,
+      insert: snippet
+    }, {
+      anchor: newCursorPos,
+      head: newCursorPos
+    }, {
       focus: true,
       preserveScroll: true,
-      anchorCaret: true
+      anchorCaret: false,
+      scrollIntoView: false
     });
     setTimeout(() => { slashMenu.isInserting = false; }, 100);
   }
@@ -1725,6 +1827,13 @@ EXPORT_PDF: `<svg width="16" height="16" fill="currentColor" viewBox="0 0 18 18"
   function describeBracketReference(label) {
     const noteRef = String(label || '').trim();
     if (!noteRef) return null;
+    const href = normalizeExternalBracketHref(noteRef);
+    if (href) {
+      return {
+        kind: 'external',
+        href
+      };
+    }
     const noteTarget = resolveNoteReferenceTargetSync(noteRef);
     if (noteTarget) {
       return {
@@ -1732,12 +1841,7 @@ EXPORT_PDF: `<svg width="16" height="16" fill="currentColor" viewBox="0 0 18 18"
         noteRef
       };
     }
-    const href = normalizeExternalBracketHref(noteRef);
-    if (!href) return null;
-    return {
-      kind: 'external',
-      href
-    };
+    return null;
   }
 
   function syncBracketReferenceResolver() {
@@ -2180,7 +2284,6 @@ EXPORT_PDF: `<svg width="16" height="16" fill="currentColor" viewBox="0 0 18 18"
 
       const noteName = decodeNoteReferenceFromHref(href);
       if (noteName) {
-        if (isCmRenderedLink) return;
         event.preventDefault();
         event.stopPropagation();
         if (!isPresentationMode) openNoteReferenceInNewTab(noteName).catch(() => {});
@@ -2280,7 +2383,11 @@ EXPORT_PDF: `<svg width="16" height="16" fill="currentColor" viewBox="0 0 18 18"
     targetElement.querySelectorAll('li.task-list-item').forEach((item) => {
       const box = item.querySelector('input.task-list-item-checkbox[type="checkbox"]');
       const label = item.querySelector('label.task-list-item-label');
-      if (label) label.classList.toggle('cm-task-checked-text', Boolean(box && box.checked));
+      const checked = Boolean(box && (box.checked || box.defaultChecked || box.hasAttribute('checked')));
+      const content = normalizeTaskListItemContentSpan(item);
+      if (label) label.classList.toggle('cm-task-checked-text', checked);
+      else if (content) content.classList.toggle('cm-task-checked-text', checked);
+      else item.classList.toggle('cm-task-checked-text', checked);
     });
   }
 
@@ -2307,15 +2414,14 @@ EXPORT_PDF: `<svg width="16" height="16" fill="currentColor" viewBox="0 0 18 18"
       targetElement.querySelectorAll('li.task-list-item').forEach((item) => {
         const box = item.querySelector('input.task-list-item-checkbox[type="checkbox"]');
         const label = item.querySelector('label.task-list-item-label');
-        if (label) label.classList.toggle('cm-task-checked-text', Boolean(box && box.checked));
+        const checked = Boolean(box && (box.checked || box.defaultChecked || box.hasAttribute('checked')));
+        const content = normalizeTaskListItemContentSpan(item);
+        if (label) label.classList.toggle('cm-task-checked-text', checked);
+        else if (content) content.classList.toggle('cm-task-checked-text', checked);
+        else item.classList.toggle('cm-task-checked-text', checked);
       });
       if (targetElement.classList.contains('noto-pdf-export-root')) {
-        targetElement.querySelectorAll('input.task-list-item-checkbox').forEach(box => {
-          const span = document.createElement('span');
-          span.className = 'task-list-item-checkbox' + (box.checked ? ' checked' : '');
-          span.textContent = box.checked ? '☑' : '☐';
-          box.parentNode.replaceChild(span, box);
-        });
+        replaceTaskCheckboxesWithPdfSpans(targetElement);
       }
       decorateRenderedMarkdown(targetElement);
     } catch (e) {
@@ -12319,8 +12425,9 @@ EXPORT_PDF: `<svg width="16" height="16" fill="currentColor" viewBox="0 0 18 18"
     playTabFlipFromRects(tabBar, firstRects);
   }
 
-  const TAB_WIDTH_ANIMATION_MS = 190;
-  const TAB_WIDTH_ANIMATION_EASE = 'cubic-bezier(0.2, 0.8, 0.2, 1)';
+  // Slightly springier, Chrome/Google-like tab motion.
+  const TAB_WIDTH_ANIMATION_MS = 240;
+  const TAB_WIDTH_ANIMATION_EASE = 'cubic-bezier(0.2, 0.9, 0.2, 1)';
 
   function getTabBarRelativeMetric(tabBar, tabEl) {
     if (!tabBar || !tabEl || typeof tabEl.getBoundingClientRect !== 'function') {
@@ -13708,6 +13815,9 @@ EXPORT_PDF: `<svg width="16" height="16" fill="currentColor" viewBox="0 0 18 18"
       }
 
       const initialDoc = tab && typeof tab.content === 'string' ? tab.content : '';
+      if (!Number.isFinite(this.live.lastDocLength)) {
+        this.live.lastDocLength = initialDoc.length;
+      }
       try {
         let cmApi = null;
         const cmApiInstance = window.NotoCodeMirror.createEditor({
@@ -13731,7 +13841,9 @@ EXPORT_PDF: `<svg width="16" height="16" fill="currentColor" viewBox="0 0 18 18"
               if (cmApi && cmApi.setDoc) {
                 this.live.cmApplyingRemote = true;
                 try {
-                  cmApi.setDoc(activeTab.content || '');
+                  const nextReadOnlyDoc = activeTab.content || '';
+                  cmApi.setDoc(nextReadOnlyDoc);
+                  this.live.lastDocLength = nextReadOnlyDoc.length;
                 } finally {
                   this.live.cmApplyingRemote = false;
                 }
@@ -13743,6 +13855,13 @@ EXPORT_PDF: `<svg width="16" height="16" fill="currentColor" viewBox="0 0 18 18"
             const docTabPath = typeof this.live.docTabPath === 'string' ? this.live.docTabPath : activeTab.path;
             if (activeTab.id !== docTabId || activeTab.path !== docTabPath) return;
             const nextCaret = selection && Number.isFinite(selection.head) ? selection.head : nextDoc.length;
+            const prevDocLength = Number.isFinite(this.live.lastDocLength) ? this.live.lastDocLength : nextDoc.length;
+            const didInsertNewline = (
+              nextDoc.length > prevDocLength
+              && nextCaret > 0
+              && nextDoc[nextCaret - 1] === '\n'
+            );
+            this.live.lastDocLength = nextDoc.length;
             this.commitLiveEditorText(nextDoc, nextCaret, {
               tabId: docTabId,
               tabPath: docTabPath,
@@ -13760,7 +13879,10 @@ EXPORT_PDF: `<svg width="16" height="16" fill="currentColor" viewBox="0 0 18 18"
             const suppressAnchorScroll = sincePointerInteraction >= 0
               && sincePointerInteraction < POINTER_SCROLL_ANCHOR_SUPPRESS_MS;
             if (scrollHost && caretHost && !suppressAnchorScroll) {
-              requestAnimationFrame(() => keepLiveCaretAtTypingAnchorSmooth(scrollHost, caretHost));
+              requestAnimationFrame(() => keepLiveCaretAtTypingAnchorSmooth(scrollHost, caretHost, {
+                onlyScrollOnNewline: true,
+                inputWasNewline: didInsertNewline
+              }));
             }
           },
           onSelectionChange: (selection) => {
@@ -14076,6 +14198,7 @@ EXPORT_PDF: `<svg width="16" height="16" fill="currentColor" viewBox="0 0 18 18"
 
       const scroller = this.live.cmView.scrollDOM;
       const savedCmScrollTop = preserveScroll ? scroller.scrollTop : 0;
+      const savedPaneScrollSnapshot = preserveScroll ? capturePaneEditorScrollSnapshot(this) : null;
       const currentDoc = this.live.cmApi.getDoc();
       const currentSel = this.live.cmApi.getSelection();
       const selectionChanged = !currentSel || currentSel.head !== absoluteOffset || currentSel.anchor !== absoluteOffset;
@@ -14086,6 +14209,7 @@ EXPORT_PDF: `<svg width="16" height="16" fill="currentColor" viewBox="0 0 18 18"
         try {
           if (currentDoc !== content) {
             this.live.cmApi.setDoc(content, { anchor: absoluteOffset, head: absoluteOffset });
+            this.live.lastDocLength = content.length;
           } else if (selectionChanged) {
             this.live.cmApi.setSelection(absoluteOffset, absoluteOffset);
           }
@@ -14124,7 +14248,9 @@ EXPORT_PDF: `<svg width="16" height="16" fill="currentColor" viewBox="0 0 18 18"
       }
 
       if (preserveScroll) scroller.scrollTop = savedCmScrollTop;
+      restorePaneEditorScrollSnapshot(savedPaneScrollSnapshot);
       requestAnimationFrame(() => {
+        restorePaneEditorScrollSnapshot(savedPaneScrollSnapshot);
         if (focus) this.live.cmApi.focus();
         if (options.anchorSourceCaret) keepLiveCaretAtTypingAnchorSmooth(scroller, this.ui.liveEditor);
         if (this.importedImage && this.importedImage.selectedId) {
@@ -15437,6 +15563,8 @@ EXPORT_PDF: `<svg width="16" height="16" fill="currentColor" viewBox="0 0 18 18"
   }
 
   async function reloadSidebar() {
+    if (!ENABLE_SIDEBAR_UI) return;
+    if (!els.fileList) return;
     invalidateNoteReferenceIndex();
     hideSortMenu();
     const listEl = els.fileList; listEl.innerHTML = '';

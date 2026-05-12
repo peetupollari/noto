@@ -4232,6 +4232,7 @@ function buildNotePdfExportDocument(payload = {}) {
   <title>${escapeHtmlAttribute(title)}</title>
   <base href="${escapeHtmlAttribute(sourceBaseHref)}">
   <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
   <style>
     @page {
       margin: 16mm 14mm;
@@ -4269,6 +4270,10 @@ function buildNotePdfExportDocument(payload = {}) {
 
     .noto-pdf-export-root .cm-block-render {
       padding: 0 !important;
+    }
+
+    .noto-pdf-export-root .katex-mathml {
+      display: none !important;
     }
   </style>
 </head>
@@ -4355,6 +4360,13 @@ ipcMain.handle('export-note-pdf', async (_event, payload = {}) => {
         const waitFonts = (document.fonts && document.fonts.ready)
           ? document.fonts.ready.catch(() => {})
           : Promise.resolve();
+        const waitStyles = Promise.all(Array.from(document.querySelectorAll('link[rel="stylesheet"]') || []).map((link) => {
+          if (!link || link.sheet) return Promise.resolve();
+          return new Promise((done) => {
+            link.addEventListener('load', done, { once: true });
+            link.addEventListener('error', done, { once: true });
+          });
+        }));
         const waitImages = Promise.all(Array.from(document.images || []).map((img) => {
           if (!img || img.complete) return Promise.resolve();
           return new Promise((done) => {
@@ -4362,7 +4374,7 @@ ipcMain.handle('export-note-pdf', async (_event, payload = {}) => {
             img.addEventListener('error', done, { once: true });
           });
         }));
-        Promise.all([waitFonts, waitImages]).then(finish).catch(finish);
+        Promise.all([waitFonts, waitStyles, waitImages]).then(finish).catch(finish);
         setTimeout(finish, 3000);
       });
     `, true);

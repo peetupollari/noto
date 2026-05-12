@@ -163,6 +163,98 @@ function resolveHeadingReference(label, headingReferenceIndex) {
   return normalizeBracketReferenceResult(match, label);
 }
 
+function normalizeSmartExternalHref(value) {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+
+  const normalizedMailto = raw.match(/^mailto:([^\s@]+@[^\s@]+\.[^\s@]+)$/i);
+  if (normalizedMailto) return `mailto:${normalizedMailto[1]}`;
+
+  const normalizedTel = raw.match(/^tel:(\+?[0-9()[\].\-\s]+)$/i);
+  if (normalizedTel) return `tel:${normalizedTel[1].replace(/\s+/g, "")}`;
+
+  let candidate = raw;
+  if (/^www\./i.test(candidate)) candidate = `https://${candidate}`;
+  if (!/^(https?:|ftp:)/i.test(candidate)) return "";
+
+  try {
+    const url = new URL(candidate);
+    if (!["http:", "https:", "ftp:"].includes(url.protocol)) return "";
+    if (!url.hostname) return "";
+    return url.toString();
+  } catch (_) {
+    return "";
+  }
+}
+
+function stripSmartLinkTargetWrapper(value) {
+  const raw = String(value || "").trim();
+  if (raw.length >= 2 && raw.startsWith("<") && raw.endsWith(">")) {
+    return raw.slice(1, -1).trim();
+  }
+  return raw;
+}
+
+function getExplicitHeadingLinkLabel(value) {
+  const raw = stripSmartLinkTargetWrapper(value);
+  if (!raw) return "";
+  if (raw.startsWith("#")) return raw.slice(1).trim();
+  if (raw.startsWith("[[") && raw.endsWith("]]")) return raw.slice(2, -2).trim();
+  return "";
+}
+
+function resolveSmartDisplayLinkTarget(rawTarget, headingReferenceIndex) {
+  const target = stripSmartLinkTargetWrapper(rawTarget);
+  if (!target) return null;
+
+  const externalHref = normalizeSmartExternalHref(target);
+  if (externalHref) {
+    return {
+      kind: "external",
+      href: externalHref
+    };
+  }
+
+  const explicitHeadingLabel = getExplicitHeadingLinkLabel(target);
+  if (explicitHeadingLabel) {
+    const resolvedHeading = resolveHeadingReference(explicitHeadingLabel, headingReferenceIndex);
+    const headingRef = resolvedHeading && resolvedHeading.headingRef
+      ? resolvedHeading.headingRef
+      : slugifyHeadingId(explicitHeadingLabel);
+    return normalizeBracketReferenceResult({
+      kind: "heading",
+      headingRef
+    }, explicitHeadingLabel);
+  }
+
+  const resolvedBracket = resolveBracketReference(target);
+  if (resolvedBracket && resolvedBracket.kind) return resolvedBracket;
+
+  const resolvedBareHeading = resolveHeadingReference(target, headingReferenceIndex);
+  if (resolvedBareHeading) return resolvedBareHeading;
+
+  return null;
+}
+
+function getBracketLinkClassForResolvedTarget(resolved) {
+  const kind = String(resolved && resolved.kind || "").toLowerCase();
+  if (kind === "note") return "bracket-link note-ref-link";
+  if (kind === "heading") return "bracket-link heading-bracket-link";
+  return "bracket-link external-bracket-link";
+}
+
+function applyResolvedLinkAttributes(token, resolved) {
+  if (!token || !resolved || !resolved.href) return false;
+  token.attrSet("href", resolved.href);
+  token.attrSet("class", getBracketLinkClassForResolvedTarget(resolved));
+  if (resolved.kind === "note" && resolved.noteRef) {
+    token.attrSet("data-note-ref", resolved.noteRef);
+  } else if (resolved.kind === "heading" && resolved.headingRef) {
+    token.attrSet("data-heading-ref", resolved.headingRef);
+  }
+  return true;
+}
+
 function getCachedRenderedMarkdown(kind, raw) {
   if (!shouldCacheRenderedMarkdown(kind, raw)) return null;
   const key = getRenderedMarkdownCacheKey(kind, raw);
@@ -215,20 +307,19 @@ function installNoteReferenceSyntax(md) {
     const label = rawLabel.trim();
     if (!label) return false;
     if (/^[xX ]$/.test(label)) return false; // task list marker [ ] / [x]
-    const resolved = resolveBracketReference(label);
+    let resolved = resolveBracketReference(label);
+    if (!resolved) {
+      const headingReferenceIndex = state.env && state.env.headingReferenceIndex instanceof Map
+        ? state.env.headingReferenceIndex
+        : null;
+      resolved = resolveHeadingReference(label, headingReferenceIndex);
+    }
     if (!resolved) return false;
 
     if (silent) return true;
 
     const open = state.push("link_open", "a", 1);
-    open.attrSet("href", resolved.href);
-    open.attrSet(
-      "class",
-      resolved.kind === "note"
-        ? "bracket-link note-ref-link"
-        : "bracket-link external-bracket-link"
-    );
-    if (resolved.kind === "note") open.attrSet("data-note-ref", resolved.noteRef);
+    applyResolvedLinkAttributes(open, resolved);
 
     const text = state.push("text", "", 0);
     text.content = rawLabel;
@@ -285,6 +376,72 @@ function installHeadingReferenceSyntax(md) {
   });
 }
 
+function installSmartDisplayLinkSyntax(md) {
+  if (!md || !md.inline || !md.inline.ruler) return;
+  md.inline.ruler.before("link", "noto_smart_display_link", (state, silent) => {
+    const src = state.src || "";
+    const start = state.pos;
+    if (src.charCodeAt(start) !== 0x5B) return false; // [
+    if (src.charCodeAt(start + 1) === 0x5B) return false; // [[...]]
+    if (start > 0) {
+      const prev = src.charCodeAt(start - 1);
+      if (prev === 0x21 || prev === 0x5C || prev === 0x5B) return false; // ! or \ or [
+    }
+
+    let labelEnd = start + 1;
+    while (labelEnd < src.length) {
+      const code = src.charCodeAt(labelEnd);
+      if (code === 0x0A) return false;
+      if (code === 0x5D) break; // ]
+      labelEnd += 1;
+    }
+    if (labelEnd >= src.length || src.charCodeAt(labelEnd) !== 0x5D) return false;
+    if (src.charCodeAt(labelEnd + 1) !== 0x28) return false; // (
+
+    let targetEnd = labelEnd + 2;
+    let depth = 0;
+    while (targetEnd < src.length) {
+      const code = src.charCodeAt(targetEnd);
+      if (code === 0x0A) return false;
+      if (code === 0x28) depth += 1;
+      if (code === 0x29) {
+        if (depth === 0) break;
+        depth -= 1;
+      }
+      targetEnd += 1;
+    }
+    if (targetEnd >= src.length || src.charCodeAt(targetEnd) !== 0x29) return false;
+
+    const rawLabel = src.slice(start + 1, labelEnd);
+    const label = rawLabel.trim();
+    const rawTarget = src.slice(labelEnd + 2, targetEnd).trim();
+    if (!label || !rawTarget) return false;
+    if (/^[xX ]$/.test(label)) return false;
+
+    const headingReferenceIndex = state.env && state.env.headingReferenceIndex instanceof Map
+      ? state.env.headingReferenceIndex
+      : null;
+    const resolved = resolveSmartDisplayLinkTarget(rawTarget, headingReferenceIndex);
+    if (!resolved) return false;
+
+    if (silent) return true;
+
+    const open = state.push("link_open", "a", 1);
+    applyResolvedLinkAttributes(open, resolved);
+
+    try {
+      state.md.inline.parse(rawLabel, state.md, state.env, state.tokens);
+    } catch (_) {
+      const text = state.push("text", "", 0);
+      text.content = rawLabel;
+    }
+
+    state.push("link_close", "a", -1);
+    state.pos = targetEnd + 1;
+    return true;
+  });
+}
+
 function installHtmlRenderSafeguards(md) {
   if (!md || !md.renderer || !md.renderer.rules) return;
   const defaultHtmlBlock = md.renderer.rules.html_block;
@@ -292,7 +449,7 @@ function installHtmlRenderSafeguards(md) {
 
   md.renderer.rules.html_block = (tokens, idx, options, env, self) => {
     const raw = String(tokens[idx] && tokens[idx].content || "");
-    if (isImportedImageHtml(raw)) {
+    if (isImportedImageHtml(raw) || isGeneratedTaskCheckboxHtml(raw)) {
       if (typeof defaultHtmlBlock === "function") return defaultHtmlBlock(tokens, idx, options, env, self);
       return raw;
     }
@@ -301,7 +458,7 @@ function installHtmlRenderSafeguards(md) {
 
   md.renderer.rules.html_inline = (tokens, idx, options, env, self) => {
     const raw = String(tokens[idx] && tokens[idx].content || "");
-    if (isImportedImageHtml(raw)) {
+    if (isImportedImageHtml(raw) || isGeneratedTaskCheckboxHtml(raw)) {
       if (typeof defaultHtmlInline === "function") return defaultHtmlInline(tokens, idx, options, env, self);
       return raw;
     }
@@ -412,7 +569,8 @@ function getMd() {
       : markdownItTaskLists &&
         typeof markdownItTaskLists.default === "function" &&
         markdownItTaskLists.default;
-  if (taskLists) md.use(taskLists, { label: true, labelAfter: true });
+  if (taskLists) md.use(taskLists, { label: false });
+  installSmartDisplayLinkSyntax(md);
   installNoteReferenceSyntax(md);
   installHeadingReferenceSyntax(md);
   installHighlightSyntax(md);
@@ -1543,16 +1701,53 @@ function restoreRenderedTableViewScrollTop(view, scrollTop) {
   });
 }
 
+function captureRenderedTableScrollSnapshot(view) {
+  const entries = [];
+  const add = (element) => {
+    if (!element || !Number.isFinite(element.scrollTop)) return;
+    if (entries.some((entry) => entry.element === element)) return;
+    entries.push({
+      element,
+      top: element.scrollTop,
+      left: Number.isFinite(element.scrollLeft) ? element.scrollLeft : 0
+    });
+  };
+  add(view && view.scrollDOM);
+  let current = view && view.dom ? view.dom : null;
+  while (current) {
+    add(current);
+    current = current.parentElement;
+  }
+  return entries;
+}
+
+function restoreRenderedTableScrollSnapshot(snapshot) {
+  if (!Array.isArray(snapshot) || !snapshot.length) return;
+  const restore = () => {
+    snapshot.forEach((entry) => {
+      const element = entry && entry.element;
+      if (!element || !element.isConnected) return;
+      element.scrollTop = entry.top || 0;
+      if (Number.isFinite(entry.left)) element.scrollLeft = entry.left;
+    });
+  };
+  restore();
+  requestAnimationFrame(restore);
+  setTimeout(restore, 0);
+}
+
 function dispatchRenderedTableViewUpdate(view, spec, scrollTop = null) {
   if (!view || !spec) return;
   const preservedScrollTop = Number.isFinite(scrollTop)
     ? Math.max(0, scrollTop)
     : getRenderedTableViewScrollTop(view);
+  const scrollSnapshot = captureRenderedTableScrollSnapshot(view);
   view.dispatch({
     ...spec,
     scrollIntoView: false
   });
   restoreRenderedTableViewScrollTop(view, preservedScrollTop);
+  restoreRenderedTableScrollSnapshot(scrollSnapshot);
 }
 
 function buildActiveTableEditValue(view, descriptor, row, col, options = {}) {
@@ -1998,6 +2193,15 @@ function isImportedImageHtml(raw) {
   return /\bdata-noto-image-id\s*=|class=(["'])[^"']*\bnoto-imported-image\b/i.test(
     String(raw || "")
   );
+}
+
+function isGeneratedTaskCheckboxHtml(raw) {
+  const value = String(raw || "").trim();
+  if (!/^<input\b/i.test(value)) return false;
+  if (!/\bclass=(["'])[^"']*\btask-list-item-checkbox\b[^"']*\1/i.test(value)) return false;
+  if (!/\btype=(["'])checkbox\1/i.test(value)) return false;
+  if (/\b(?:on\w+|style|src|formaction)\s*=/i.test(value)) return false;
+  return /^<input\b(?=[^>]*\bclass=(["'])[^"']*\btask-list-item-checkbox\b[^"']*\1)(?=[^>]*\btype=(["'])checkbox\2)[^>]*>$/i.test(value);
 }
 
 /* ---------- Widgets ---------- */
@@ -3620,6 +3824,7 @@ function buildInlineDecorations(view) {
   const strikeRe = /~~(?=\S)([\s\S]*?)(?<=\S)~~/g;
   const highlightRe = /==(?=\S)([\s\S]*?)(?<=\S)==/g;
   const codeSpanRe = /`([^`]+?)`/g;
+  const smartDisplayLinkRe = /\[([^\]\n]+)\]\(([^)\n]+)\)/g;
   const headingRefRe = /\[\[([^\]\n]+)\]\]/g;
   const noteRefRe = /\[([^\]\n]+)\]/g;
   const hrRe = /^\s*(?:-{3,}|\*{3,}|_{3,})\s*$/;
@@ -3740,6 +3945,43 @@ function buildInlineDecorations(view) {
         }
       }
 
+      smartDisplayLinkRe.lastIndex = 0;
+      let smartLinkMatch;
+      while ((smartLinkMatch = smartDisplayLinkRe.exec(text)) !== null) {
+        const raw = String(smartLinkMatch[0] || "");
+        const labelRaw = String(smartLinkMatch[1] || "");
+        const targetRaw = String(smartLinkMatch[2] || "");
+        const label = labelRaw.trim();
+        if (!raw || !label || !targetRaw.trim()) continue;
+        if (/^[xX ]$/.test(label)) continue;
+
+        const localStart = smartLinkMatch.index;
+        const localEnd = localStart + raw.length;
+        const prevChar = localStart > 0 ? text.charAt(localStart - 1) : "";
+        if (prevChar === "!" || prevChar === "\\" || prevChar === "[") continue;
+        if (overlapsCodeSpan(localStart, localEnd)) continue;
+        if (overlapsInlineMath(base + localStart, base + localEnd)) continue;
+
+        const resolved = resolveSmartDisplayLinkTarget(targetRaw, headingReferenceIndex);
+        if (!resolved) continue;
+
+        const start = base + localStart;
+        const end = base + localEnd;
+        if (isRevealedLine) {
+          ranges.push(
+            Decoration.mark({ class: "cm-bracket-link-inline" }).range(start, end)
+          );
+          continue;
+        }
+
+        ranges.push(
+          Decoration.replace({
+            widget: new BracketReferenceWidget(labelRaw, resolved),
+            inclusive: false
+          }).range(start, end)
+        );
+      }
+
       headingRefRe.lastIndex = 0;
       let headingMatch;
       while ((headingMatch = headingRefRe.exec(text)) !== null) {
@@ -3788,7 +4030,8 @@ function buildInlineDecorations(view) {
         const label = labelRaw.trim();
         if (!label) continue;
         if (/^[xX ]$/.test(label)) continue;
-        const resolved = resolveBracketReference(label);
+        let resolved = resolveBracketReference(label);
+        if (!resolved) resolved = resolveHeadingReference(label, headingReferenceIndex);
         if (!resolved) continue;
 
         const localStart = noteMatch.index;
@@ -4128,8 +4371,24 @@ function handleBacktickInput(view, from, to) {
   const doc = state.doc;
 
   if (!main.empty) {
+    // If the selection is already wrapped as inline code, swallow extra backticks
+    // so repeated ` presses don't turn `code` into ``code``.
+    const hasLeftTick = from > 0 && doc.sliceString(from - 1, from) === "`";
+    const hasRightTick = to < doc.length && doc.sliceString(to, to + 1) === "`";
+    if (hasLeftTick && hasRightTick) {
+      view.dispatch({
+        selection: { anchor: from, head: to },
+        userEvent: "input.type"
+      });
+      return true;
+    }
     const selected = doc.sliceString(from, to);
-    dispatchTextChange(view, from, to, `\`${selected}\``, from + selected.length + 2);
+    const insert = `\`${selected}\``;
+    view.dispatch({
+      changes: { from, to, insert },
+      selection: { anchor: from + 1, head: from + 1 + selected.length },
+      userEvent: "input.type"
+    });
     return true;
   }
 
@@ -4150,20 +4409,89 @@ function handleBacktickInput(view, from, to) {
   return false;
 }
 
+function findPreviousUnescapedSingleMarker(doc, from, marker) {
+  if (!doc || !marker || from <= 0) return -1;
+  const markerChar = String(marker);
+  if (markerChar.length !== 1) return -1;
+  const line = doc.lineAt(from);
+  const lineText = line.text || "";
+  const base = line.from;
+  const localFrom = from - base;
+  for (let i = localFrom - 1; i >= 0; i -= 1) {
+    if (lineText[i] !== markerChar) continue;
+    if (isEscapedAt(lineText, i)) continue;
+    const left = i - 1 >= 0 ? lineText[i - 1] : "";
+    const right = i + 1 < lineText.length ? lineText[i + 1] : "";
+    if (left === markerChar || right === markerChar) continue;
+    return base + i;
+  }
+  return -1;
+}
+
+function promoteWrappedSingleMarkerToDouble(view, from, marker) {
+  if (!view) return false;
+  const { state } = view;
+  const doc = state.doc;
+  if (!doc || from <= 0) return false;
+  if (doc.sliceString(from - 1, from) !== marker) return false;
+  if (from - 2 >= 0 && doc.sliceString(from - 2, from - 1) === marker) return false;
+  if (from < doc.length && doc.sliceString(from, from + 1) === marker) return false;
+  const openPos = findPreviousUnescapedSingleMarker(doc, from - 1, marker);
+  if (!Number.isFinite(openPos) || openPos < 0) return false;
+  if (openPos + 1 >= from - 1) return false;
+  if (doc.sliceString(openPos, openPos + 1) !== marker) return false;
+  view.dispatch({
+    changes: [
+      { from: openPos, to: openPos, insert: marker },
+      { from: from, to: from, insert: marker }
+    ],
+    selection: { anchor: from + 1, head: from + 1 },
+    userEvent: "input.type"
+  });
+  return true;
+}
+
+function suppressExtraClosingMarker(view, from, marker, count = 1) {
+  if (!view) return false;
+  const doc = view.state.doc;
+  if (!doc || from <= 0) return false;
+  const left = doc.sliceString(Math.max(0, from - count), from);
+  if (left !== marker.repeat(count)) return false;
+  if (from < doc.length && doc.sliceString(from, from + 1) === marker) return false;
+  // If we're right after a closing marker sequence, swallow the extra input
+  // to keep the wrapper symmetric (selection-wrapping already inserted both sides).
+  return true;
+}
+
 function handleSmartMarkdownInput(view, from, to, text) {
   if (!view || typeof text !== "string" || text.length !== 1) return false;
   const { state } = view;
   if (!state.selection || state.selection.ranges.length !== 1) return false;
   const main = state.selection.main;
-  if (main.from !== from || main.to !== to) return false;
+  if (main.empty) {
+    if (from !== to) return false;
+    if (main.from !== from) return false;
+  } else {
+    from = main.from;
+    to = main.to;
+  }
 
-  if (text === "`") return handleBacktickInput(view, from, to);
+  if (text === "`") {
+    if (main.empty && suppressExtraClosingMarker(view, from, "`", 1)) return true;
+    return handleBacktickInput(view, from, to);
+  }
 
   if (text === "~") {
     if (main.empty && promoteStrikePair(view, from)) return true;
+    if (main.empty && suppressExtraClosingMarker(view, from, "~", 2)) return true;
     if (!main.empty) {
       const selected = state.doc.sliceString(from, to);
-      dispatchTextChange(view, from, to, `~~${selected}~~`, from + 2 + selected.length);
+      const insert = `~~${selected}~~`;
+      view.dispatch({
+        changes: { from, to, insert },
+        selection: { anchor: from + 2, head: from + 2 + selected.length },
+        userEvent: "input.type"
+      });
       return true;
     }
     return false;
@@ -4182,6 +4510,7 @@ function handleSmartMarkdownInput(view, from, to, text) {
   if (!INLINE_PAIR_MARKERS.has(text)) return false;
 
   if (main.empty && !isEscapedAt(state.doc.lineAt(from).text, from - state.doc.lineAt(from).from)) {
+    if (DOUBLE_PAIR_MARKERS.has(text) && promoteWrappedSingleMarkerToDouble(view, from, text)) return true;
     if (promoteInlinePair(view, from, text)) return true;
     dispatchTextChange(view, from, to, text + text, from + 1);
     return true;
@@ -4191,7 +4520,11 @@ function handleSmartMarkdownInput(view, from, to, text) {
     const selected = state.doc.sliceString(from, to);
     const wrapper = DOUBLE_PAIR_MARKERS.has(text) ? text : text;
     const insert = `${wrapper}${selected}${wrapper}`;
-    dispatchTextChange(view, from, to, insert, from + wrapper.length + selected.length);
+    view.dispatch({
+      changes: { from, to, insert },
+      selection: { anchor: from + wrapper.length, head: from + wrapper.length + selected.length },
+      userEvent: "input.type"
+    });
     return true;
   }
 
@@ -4773,6 +5106,89 @@ function stopHandledDomEvent(event) {
   }
 }
 
+function wrapOrPromoteSelection(view, { marker, left = marker, right = marker, promoteSingle = false } = {}) {
+  if (!view || !view.state || !view.state.selection) return false;
+  if (!marker || typeof marker !== "string") return false;
+  const main = view.state.selection.main;
+  if (!main || main.empty) return false;
+
+  const { doc } = view.state;
+  const from = main.from;
+  const to = main.to;
+  const selected = doc.sliceString(from, to);
+
+  const hasLeft = from >= left.length && doc.sliceString(from - left.length, from) === left;
+  const hasRight = to + right.length <= doc.length && doc.sliceString(to, to + right.length) === right;
+  if (promoteSingle && left.length === 1 && right.length === 1) {
+    const single = left;
+    const isWrappedSingle = from > 0 && to < doc.length
+      && doc.sliceString(from - 1, from) === single
+      && doc.sliceString(to, to + 1) === single;
+    if (isWrappedSingle) {
+      view.dispatch({
+        changes: [
+          { from: from - 1, insert: single },
+          { from: to + 1, insert: single }
+        ],
+        // Inserting before `from` shifts the inner selection by +1.
+        selection: { anchor: from + 1, head: to + 1 },
+        userEvent: "input.type"
+      });
+      return true;
+    }
+  }
+  if (hasLeft && hasRight) {
+    view.dispatch({
+      selection: { anchor: from, head: to },
+      userEvent: "input.type"
+    });
+    return true;
+  }
+
+  view.dispatch({
+    changes: [
+      { from, insert: left },
+      { from: to, insert: right }
+    ],
+    selection: { anchor: from + left.length, head: from + left.length + selected.length },
+    userEvent: "input.type"
+  });
+  return true;
+}
+
+const smartMarkdownSelectionKeyHandler = EditorView.domEventHandlers({
+  keydown: (event, view) => {
+    if (!event || !view || !view.state || !view.state.selection) return false;
+    const main = view.state.selection.main;
+    if (!main || main.empty) return false;
+    if (event.metaKey || event.ctrlKey || event.altKey) return false;
+
+    const key = typeof event.key === "string" ? event.key : "";
+    if (key === "*") {
+      event.preventDefault();
+      event.stopPropagation();
+      if (typeof event.stopImmediatePropagation === "function") event.stopImmediatePropagation();
+      return wrapOrPromoteSelection(view, { marker: "*", promoteSingle: true });
+    }
+    if (key === "`") {
+      event.preventDefault();
+      event.stopPropagation();
+      if (typeof event.stopImmediatePropagation === "function") event.stopImmediatePropagation();
+      // Inline code must stay single-backtick; swallow repeated presses when already wrapped.
+      return wrapOrPromoteSelection(view, { marker: "`" });
+    }
+    if (key === "~") {
+      event.preventDefault();
+      event.stopPropagation();
+      if (typeof event.stopImmediatePropagation === "function") event.stopImmediatePropagation();
+      // Strikethrough uses double tildes.
+      return wrapOrPromoteSelection(view, { marker: "~", left: "~~", right: "~~" });
+    }
+
+    return false;
+  }
+});
+
 function shouldBypassEditorTabOverride(event) {
   const targetEl = getEventTargetElement(event);
   if (!(targetEl instanceof HTMLElement)) return false;
@@ -4789,6 +5205,22 @@ function shouldBypassEditorTabOverride(event) {
 }
 
 const smartMarkdownKeyBindings = [
+  {
+    key: "*",
+    run: (view) => wrapOrPromoteSelection(view, { marker: "*", promoteSingle: true })
+  },
+  {
+    key: "_",
+    run: (view) => wrapOrPromoteSelection(view, { marker: "_", promoteSingle: true })
+  },
+  {
+    key: "`",
+    run: (view) => wrapOrPromoteSelection(view, { marker: "`" })
+  },
+  {
+    key: "~",
+    run: (view) => wrapOrPromoteSelection(view, { marker: "~", left: "~~", right: "~~" })
+  },
   {
     key: "Shift-Enter",
     run: handleSmartTableShiftEnter
@@ -5011,6 +5443,7 @@ function createEditor({ parent, doc = "", mode = "rich", onDocChange, onSelectio
 
   const extensions = [
     EditorView.lineWrapping,
+  smartMarkdownSelectionKeyHandler,
     drawSelection(),
     history(),
     indentOnInput(),
